@@ -199,6 +199,10 @@ public class TerminalWindow : ShadowWindow {
 
     private void setup_keyboard_shortcuts() {
         var controller = new Gtk.EventControllerKey();
+
+        // Set propagation phase to CAPTURE to intercept keys before VTE terminal
+        controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
+
         controller.key_pressed.connect((keyval, keycode, state) => {
             bool ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
             bool shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
@@ -206,31 +210,35 @@ public class TerminalWindow : ShadowWindow {
             if (ctrl && shift) {
                 switch (keyval) {
                     case Gdk.Key.T:
+                        // Ctrl+Shift+T: New tab
                         add_new_tab();
                         return true;
                     case Gdk.Key.W:
+                        // Ctrl+Shift+W: Close tab
                         if (tabs.length() > 0) {
                             var tab = tabs.nth_data((uint)tab_bar.get_active_index());
                             if (tab != null) close_tab(tab);
                         }
                         return true;
-                    case Gdk.Key.Tab:
-                        // Next tab
-                        cycle_tab(1);
-                        return true;
                     case Gdk.Key.ISO_Left_Tab:
-                        // Previous tab
+                        // Ctrl+Shift+Tab: Previous tab (cycles)
                         cycle_tab(-1);
                         return true;
                 }
             } else if (ctrl) {
-                // Ctrl+PageUp/PageDown for tab switching
-                if (keyval == Gdk.Key.Page_Up) {
-                    cycle_tab(-1);
-                    return true;
-                } else if (keyval == Gdk.Key.Page_Down) {
-                    cycle_tab(1);
-                    return true;
+                switch (keyval) {
+                    case Gdk.Key.Tab:
+                        // Ctrl+Tab: Next tab (cycles)
+                        cycle_tab(1);
+                        return true;
+                    case Gdk.Key.Page_Up:
+                        // Ctrl+PageUp: Previous tab
+                        cycle_tab(-1);
+                        return true;
+                    case Gdk.Key.Page_Down:
+                        // Ctrl+PageDown: Next tab
+                        cycle_tab(1);
+                        return true;
                 }
             }
 
