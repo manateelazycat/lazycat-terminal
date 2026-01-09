@@ -6,6 +6,8 @@ public class TabBar : Gtk.DrawingArea {
     private int hover_index = -1;
     private int hover_control = -1;  // 0=minimize, 1=maximize, 2=close, -1=none
     private int pressed_control = -1;
+    private bool hover_new_tab = false;
+    private bool pressed_new_tab = false;
 
     // Window control button constants (80% of original 16px)
     private const double CTRL_BTN_SIZE = 12.8;
@@ -19,6 +21,7 @@ public class TabBar : Gtk.DrawingArea {
     private const int TAB_PADDING = 12;
     private const int CLOSE_BTN_SIZE = 16;
     private const int NEW_TAB_BTN_SIZE = 36;  // 36px button size
+    private const int NEW_TAB_BTN_MARGIN_LEFT = 20;  // 20px left margin
     private const int CORNER_RADIUS = 10;
 
     public signal void tab_selected(int index);
@@ -177,7 +180,15 @@ public class TabBar : Gtk.DrawingArea {
         // Plus icon with 10px padding inside the button area
         cr.set_antialias(Cairo.Antialias.NONE);  // Disable anti-aliasing for crisp lines
         cr.set_line_width(1.0);  // Thinner line to match window control buttons
-        cr.set_source_rgba(0.7, 0.7, 0.7, 1.0);  // Opaque color matching window control buttons
+
+        // Determine color based on hover/pressed state (same as window control buttons)
+        double alpha = 0.6;  // Default: subtle
+        if (pressed_new_tab) {
+            alpha = 1.0;  // Pressed: full brightness
+        } else if (hover_new_tab) {
+            alpha = 0.85;  // Hover: brighter
+        }
+        cr.set_source_rgba(0.7, 0.7, 0.7, alpha);  // Opaque color matching window control buttons
 
         double offset = 8;  // 10px padding from edges means (36-20)/2 = 8px offset
         cr.move_to(center_x - offset, center_y);
@@ -272,18 +283,20 @@ public class TabBar : Gtk.DrawingArea {
 
     private double get_new_tab_button_x() {
         if (tab_infos.length() == 0) {
-            return TAB_PADDING;
+            return TAB_PADDING + NEW_TAB_BTN_MARGIN_LEFT;
         }
         var last = tab_infos.nth_data((uint)(tab_infos.length() - 1));
-        return last.x + last.width - TAB_OVERLAP + 8;
+        return last.x + last.width - TAB_OVERLAP + 8 + NEW_TAB_BTN_MARGIN_LEFT;
     }
 
     private void on_motion(double x, double y) {
         int old_hover = hover_index;
         int old_hover_control = hover_control;
+        bool old_hover_new_tab = hover_new_tab;
 
         hover_index = -1;
         hover_control = -1;
+        hover_new_tab = false;
 
         // Check window control buttons first
         int width = get_width();
@@ -300,8 +313,20 @@ public class TabBar : Gtk.DrawingArea {
             }
         }
 
-        // Check tabs (only if not hovering control buttons)
+        // Check new tab button (only if not hovering control buttons)
         if (hover_control < 0) {
+            double new_tab_x = get_new_tab_button_x();
+            double new_tab_y = (get_height() - NEW_TAB_BTN_SIZE) / 2;
+            double new_tab_hit_radius = NEW_TAB_BTN_SIZE / 2 + 3;
+
+            if (Math.fabs(x - (new_tab_x + NEW_TAB_BTN_SIZE / 2)) <= new_tab_hit_radius &&
+                Math.fabs(y - (new_tab_y + NEW_TAB_BTN_SIZE / 2)) <= new_tab_hit_radius) {
+                hover_new_tab = true;
+            }
+        }
+
+        // Check tabs (only if not hovering control buttons or new tab button)
+        if (hover_control < 0 && !hover_new_tab) {
             for (int i = 0; i < tab_infos.length(); i++) {
                 var info = tab_infos.nth_data((uint)i);
                 if (x >= info.x && x <= info.x + info.width && y <= TAB_HEIGHT + 4) {
@@ -311,15 +336,16 @@ public class TabBar : Gtk.DrawingArea {
             }
         }
 
-        if (old_hover != hover_index || old_hover_control != hover_control) {
+        if (old_hover != hover_index || old_hover_control != hover_control || old_hover_new_tab != hover_new_tab) {
             queue_draw();
         }
     }
 
     private void on_leave() {
-        bool need_redraw = hover_index != -1 || hover_control != -1;
+        bool need_redraw = hover_index != -1 || hover_control != -1 || hover_new_tab;
         hover_index = -1;
         hover_control = -1;
+        hover_new_tab = false;
         if (need_redraw) {
             queue_draw();
         }
@@ -342,17 +368,40 @@ public class TabBar : Gtk.DrawingArea {
             }
         }
 
+        // Check new tab button - set pressed state
+        double new_tab_x = get_new_tab_button_x();
+        double new_tab_y = (get_height() - NEW_TAB_BTN_SIZE) / 2;
+        double new_tab_hit_radius = NEW_TAB_BTN_SIZE / 2 + 3;
+
+        if (Math.fabs(x - (new_tab_x + NEW_TAB_BTN_SIZE / 2)) <= new_tab_hit_radius &&
+            Math.fabs(y - (new_tab_y + NEW_TAB_BTN_SIZE / 2)) <= new_tab_hit_radius) {
+            pressed_new_tab = true;
+            queue_draw();
+            return;
+        }
+
         pressed_control = -1;
+        pressed_new_tab = false;
     }
 
     private void on_release(int n_press, double x, double y) {
-        // Check new tab button
+        // Check new tab button - execute action if released on same button
         double new_tab_x = get_new_tab_button_x();
-        if (x >= new_tab_x && x <= new_tab_x + NEW_TAB_BTN_SIZE && y <= TAB_HEIGHT + 4) {
-            pressed_control = -1;
-            new_tab_requested();
+        double new_tab_y = (get_height() - NEW_TAB_BTN_SIZE) / 2;
+        double new_tab_hit_radius = NEW_TAB_BTN_SIZE / 2 + 3;
+
+        if (Math.fabs(x - (new_tab_x + NEW_TAB_BTN_SIZE / 2)) <= new_tab_hit_radius &&
+            Math.fabs(y - (new_tab_y + NEW_TAB_BTN_SIZE / 2)) <= new_tab_hit_radius) {
+            // Only trigger if released on the same button that was pressed
+            if (pressed_new_tab) {
+                new_tab_requested();
+            }
+            pressed_new_tab = false;
+            queue_draw();
             return;
         }
+
+        pressed_new_tab = false;
 
         // Check window controls - execute action if released on same button
         int width = get_width();
