@@ -27,15 +27,8 @@ public class TerminalTab : Gtk.Box {
         int result_length = 0;
         string[]? fonts = FontUtils.list_mono_or_dot_fonts(out result_length);
 
-		stdout.printf(@"fonts length  $result_length\n");
-
-		foreach (string font in fonts) {
-			stdout.printf("%s\n", font);
-		}
-
         if (result_length > 0 && fonts != null) {
             cached_mono_font = fonts[0];
-			stdout.printf("Font %s\n: ", cached_mono_font);
             return cached_mono_font;
         }
 
@@ -88,7 +81,6 @@ public class TerminalTab : Gtk.Box {
 
         // Set font - use first available monospace font from system
         string mono_font = get_mono_font();
-		stdout.printf("Mono font %s\n: ", mono_font);
         var font = Pango.FontDescription.from_string(mono_font + " 14");
         terminal.set_font(font);
 

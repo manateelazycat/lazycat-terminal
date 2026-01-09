@@ -226,12 +226,21 @@ public class ShadowWindow : Gtk.ApplicationWindow {
         }
     }
 
+    private bool surface_signals_connected = false;
+
     private void setup_input_region() {
+        // Will connect signals when surface becomes available via tick callback
+    }
+
+    private void ensure_surface_signals() {
+        if (surface_signals_connected) return;
+
         var surface = get_surface();
         if (surface != null) {
             surface.notify["state"].connect(on_surface_state_changed);
             surface.notify["width"].connect(on_surface_size_changed);
             surface.notify["height"].connect(on_surface_size_changed);
+            surface_signals_connected = true;
         }
     }
 
@@ -297,6 +306,9 @@ public class ShadowWindow : Gtk.ApplicationWindow {
         var surface = get_surface();
         if (surface == null) return;
 
+        // Ensure surface signals are connected
+        ensure_surface_signals();
+
         var display = Gdk.Display.get_default();
         if (display == null) return;
 
@@ -315,12 +327,45 @@ public class ShadowWindow : Gtk.ApplicationWindow {
     }
 
     private void update_snap_position() {
-        WindowSnapPosition new_position;
+        WindowSnapPosition new_position = WindowSnapPosition.NONE;
 
-        if (is_maximized()) {
-            new_position = WindowSnapPosition.MAXIMIZED;
-        } else {
-            new_position = WindowSnapPosition.NONE;
+        var surface = get_surface();
+        if (surface != null) {
+            var toplevel = surface as Gdk.Toplevel;
+            if (toplevel != null) {
+                var state = toplevel.get_state();
+
+                // First check ToplevelState
+                if ((Gdk.ToplevelState.MAXIMIZED in state) ||
+                    (Gdk.ToplevelState.TILED in state)) {
+                    new_position = WindowSnapPosition.MAXIMIZED;
+                }
+            }
+        }
+
+        // If ToplevelState not set, detect by window size
+        if (new_position == WindowSnapPosition.NONE && monitor_width > 0 && monitor_height > 0) {
+            int win_w = get_width();
+            int win_h = get_height();
+
+            // Tolerance for size comparison
+            int tolerance = SHADOW_SIZE * 2 + 20;
+
+            bool is_full_width = (win_w >= monitor_width - tolerance);
+            bool is_half_width = (win_w >= monitor_width / 2 - tolerance) && (win_w <= monitor_width / 2 + tolerance);
+            bool is_full_height = (win_h >= monitor_height - tolerance);
+            bool is_half_height = (win_h >= monitor_height / 2 - tolerance) && (win_h <= monitor_height / 2 + tolerance);
+
+            if (is_full_width && is_full_height) {
+                // Maximized
+                new_position = WindowSnapPosition.MAXIMIZED;
+            } else if (is_half_width && is_full_height) {
+                // Left or right half snap
+                new_position = WindowSnapPosition.MAXIMIZED;
+            } else if (is_half_width && is_half_height) {
+                // Corner snap
+                new_position = WindowSnapPosition.MAXIMIZED;
+            }
         }
 
         if (new_position != snap_position) {
