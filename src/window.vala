@@ -45,10 +45,10 @@ public class TerminalWindow : Gtk.ApplicationWindow {
         var provider = new Gtk.CssProvider();
         provider.load_from_string("""
             .transparent-window {
-                background-color: rgba(30, 30, 30, 0.75);
+                background-color: rgba(0, 0, 0, 0.88);
             }
             .tab-bar {
-                background-color: rgba(40, 40, 40, 0.9);
+                background-color: rgba(0, 0, 0, 0.88);
                 min-height: 38px;
             }
             .terminal-container {

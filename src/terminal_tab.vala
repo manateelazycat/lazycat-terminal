@@ -52,14 +52,39 @@ public class TerminalTab : Gtk.Box {
         terminal.set_scroll_on_output(false);
         terminal.set_scroll_on_keystroke(true);
 
-        // Transparency
+        // Background and Foreground
         var bg = Gdk.RGBA();
-        bg.parse("rgba(30, 30, 30, 0.0)");
+        bg.parse("#000000");  // Black background
         terminal.set_color_background(bg);
 
         var fg = Gdk.RGBA();
-        fg.parse("#ffffff");
+        fg.parse("#00cd00");  // Green foreground
         terminal.set_color_foreground(fg);
+
+        // Set 16-color palette
+        Gdk.RGBA[] palette = new Gdk.RGBA[16];
+
+        // Color 0-7 (normal colors)
+        palette[0].parse("#073642");  // color_1
+        palette[1].parse("#bdb76b");  // color_2
+        palette[2].parse("#859900");  // color_3
+        palette[3].parse("#b58900");  // color_4
+        palette[4].parse("#3465a4");  // color_5
+        palette[5].parse("#d33682");  // color_6
+        palette[6].parse("#2aa198");  // color_7
+        palette[7].parse("#eee8d5");  // color_8
+
+        // Color 8-15 (bright colors)
+        palette[8].parse("#002b36");   // color_9
+        palette[9].parse("#8b0000");   // color_10
+        palette[10].parse("#00ff00");  // color_11
+        palette[11].parse("#657b83");  // color_12
+        palette[12].parse("#1e90ff");  // color_13
+        palette[13].parse("#6c71c4");  // color_14
+        palette[14].parse("#93a1a1");  // color_15
+        palette[15].parse("#fdf6e3");  // color_16
+
+        terminal.set_colors(fg, bg, palette);
 
         // Set font - use first available monospace font from system
         string mono_font = get_mono_font();

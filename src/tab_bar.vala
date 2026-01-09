@@ -64,8 +64,8 @@ public class TabBar : Gtk.DrawingArea {
         // Calculate tab positions and widths
         calculate_tab_layout(width);
 
-        // Draw background
-        cr.set_source_rgba(0.16, 0.16, 0.16, 0.9);
+        // Draw background - black with 0.88 opacity
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.88);
         cr.rectangle(0, 0, width, height);
         cr.fill();
 
@@ -127,7 +127,7 @@ public class TabBar : Gtk.DrawingArea {
         if (is_active) {
             double underline_y = height - 2;
 
-            cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+            cr.set_source_rgba(0.172, 0.655, 0.973, 1.0);  // #2CA7F8
             cr.set_line_width(2.0);
             cr.move_to(x, underline_y);
             cr.line_to(x + w, underline_y);
@@ -137,7 +137,7 @@ public class TabBar : Gtk.DrawingArea {
 
     private void draw_tab_title(Cairo.Context cr, TabInfo info, double x, double y, double w, double h, bool is_active) {
         cr.select_font_face("Sans", Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
-        cr.set_font_size(12);
+        cr.set_font_size(15);
 
         // Truncate title if needed
         // Text area: tab width - 40px (20px padding on each side)
@@ -159,7 +159,7 @@ public class TabBar : Gtk.DrawingArea {
         double text_y = y + h / 2 + extents.height / 2 - 2;
 
         if (is_active) {
-            cr.set_source_rgba(1.0, 1.0, 1.0, 1.0);
+            cr.set_source_rgba(0.172, 0.655, 0.973, 1.0);  // #2CA7F8
         } else {
             cr.set_source_rgba(0.7, 0.7, 0.7, 1.0);
         }
