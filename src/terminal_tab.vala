@@ -4,6 +4,8 @@ public class TerminalTab : Gtk.Box {
     private Vte.Terminal terminal;
     public string tab_title { get; private set; }
 
+    private static string? cached_mono_font = null;
+
     public signal void title_changed(string title);
     public signal void close_requested();
 
@@ -15,6 +17,31 @@ public class TerminalTab : Gtk.Box {
     construct {
         setup_terminal();
         spawn_shell();
+    }
+
+    private static string get_mono_font() {
+        if (cached_mono_font != null) {
+            return cached_mono_font;
+        }
+
+        int result_length = 0;
+        string[]? fonts = FontUtils.list_mono_or_dot_fonts(out result_length);
+
+		stdout.printf(@"fonts length  $result_length\n");
+
+		foreach (string font in fonts) {
+			stdout.printf("%s\n", font);
+		}
+
+        if (result_length > 0 && fonts != null) {
+            cached_mono_font = fonts[0];
+			stdout.printf("Font %s\n: ", cached_mono_font);
+            return cached_mono_font;
+        }
+
+        // Fallback to default monospace font
+        cached_mono_font = "Monospace";
+        return cached_mono_font;
     }
 
     private void setup_terminal() {
@@ -34,8 +61,10 @@ public class TerminalTab : Gtk.Box {
         fg.parse("#ffffff");
         terminal.set_color_foreground(fg);
 
-        // Set font
-        var font = Pango.FontDescription.from_string("Monospace 11");
+        // Set font - use first available monospace font from system
+        string mono_font = get_mono_font();
+		stdout.printf("Mono font %s\n: ", mono_font);
+        var font = Pango.FontDescription.from_string(mono_font + " 14");
         terminal.set_font(font);
 
         terminal.set_vexpand(true);
