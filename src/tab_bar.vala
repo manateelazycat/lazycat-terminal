@@ -4,6 +4,13 @@ public class TabBar : Gtk.DrawingArea {
     private List<TabInfo> tab_infos;
     private int active_index = -1;
     private int hover_index = -1;
+    private int hover_control = -1;  // 0=minimize, 1=maximize, 2=close, -1=none
+    private int pressed_control = -1;
+
+    // Window control button constants (80% of original 16px)
+    private const double CTRL_BTN_SIZE = 12.8;
+    private const double CTRL_BTN_SPACING = 20;  // Doubled spacing to avoid accidental clicks
+    private const double CTRL_BTN_AREA_WIDTH = 85;
 
     private const int TAB_HEIGHT = 34;
     private const int TAB_MIN_WIDTH = 80;
@@ -48,7 +55,8 @@ public class TabBar : Gtk.DrawingArea {
 
         var click = new Gtk.GestureClick();
         click.set_button(0);
-        click.pressed.connect(on_click);
+        click.pressed.connect(on_press);
+        click.released.connect(on_release);
         add_controller(click);
     }
 
@@ -181,23 +189,80 @@ public class TabBar : Gtk.DrawingArea {
     }
 
     private void draw_window_controls(Cairo.Context cr, int width, int height) {
-        double btn_size = 12;
-        double spacing = 8;
-        double start_x = width - 80;
+        double btn_size = CTRL_BTN_SIZE;
+        double spacing = CTRL_BTN_SPACING;
+        double start_x = width - CTRL_BTN_AREA_WIDTH;
         double y = height / 2;
 
-        // Colors for macOS-style buttons
-        double[,] colors = {
-            {0.35, 0.78, 0.35, 1.0},  // Green (minimize)
-            {0.98, 0.75, 0.18, 1.0},  // Yellow (maximize)
-            {0.98, 0.38, 0.35, 1.0}   // Red (close)
-        };
+        // Check if window is maximized
+        bool is_maximized = false;
+        var window = get_root() as Gtk.Window;
+        if (window != null) {
+            is_maximized = window.is_maximized();
+        }
 
+        // Draw each control button
         for (int i = 0; i < 3; i++) {
-            double x = start_x + i * (btn_size + spacing);
-            cr.arc(x, y, btn_size / 2, 0, 2 * Math.PI);
-            cr.set_source_rgba(colors[i, 0], colors[i, 1], colors[i, 2], colors[i, 3]);
-            cr.fill();
+            double btn_x = start_x + i * (btn_size + spacing);
+
+            // Determine color based on hover/pressed state
+            double alpha = 0.6;  // Default: subtle
+            if (pressed_control == i) {
+                alpha = 1.0;  // Pressed: full brightness
+            } else if (hover_control == i) {
+                alpha = 0.85;  // Hover: brighter
+            }
+            cr.set_source_rgba(0.7, 0.7, 0.7, alpha);
+            cr.set_line_width(1.0);  // Thinner, more delicate lines
+
+            if (i == 0) {
+                // Minimize button - horizontal line
+                cr.move_to(btn_x - btn_size / 2, y);
+                cr.line_to(btn_x + btn_size / 2, y);
+                cr.stroke();
+            } else if (i == 1) {
+                // Maximize/Restore button
+                double box_size = btn_size - 3;
+                if (is_maximized) {
+                    // Restore icon: two overlapping rectangles
+                    double small_box = box_size * 0.75;
+                    double offset = box_size * 0.25;
+
+                    // Back rectangle (top-right)
+                    cr.rectangle(btn_x - small_box / 2 + offset, y - small_box / 2 - offset, small_box, small_box);
+                    cr.stroke();
+
+                    // Front rectangle (bottom-left) with filled background to cover overlap
+                    cr.set_source_rgba(0.16, 0.16, 0.16, 0.9);
+                    cr.rectangle(btn_x - small_box / 2 - offset, y - small_box / 2 + offset, small_box, small_box);
+                    cr.fill();
+
+                    // Redraw front rectangle outline
+                    if (pressed_control == i) {
+                        alpha = 1.0;
+                    } else if (hover_control == i) {
+                        alpha = 0.85;
+                    } else {
+                        alpha = 0.6;
+                    }
+                    cr.set_source_rgba(0.7, 0.7, 0.7, alpha);
+                    cr.rectangle(btn_x - small_box / 2 - offset, y - small_box / 2 + offset, small_box, small_box);
+                    cr.stroke();
+                } else {
+                    // Maximize icon: single rectangle
+                    cr.rectangle(btn_x - box_size / 2, y - box_size / 2, box_size, box_size);
+                    cr.stroke();
+                }
+            } else {
+                // Close button - X shape
+                double offset = (btn_size - 3) / 2;
+                cr.move_to(btn_x - offset, y - offset);
+                cr.line_to(btn_x + offset, y + offset);
+                cr.stroke();
+                cr.move_to(btn_x + offset, y - offset);
+                cr.line_to(btn_x - offset, y + offset);
+                cr.stroke();
+            }
         }
     }
 
@@ -211,72 +276,114 @@ public class TabBar : Gtk.DrawingArea {
 
     private void on_motion(double x, double y) {
         int old_hover = hover_index;
+        int old_hover_control = hover_control;
 
         hover_index = -1;
+        hover_control = -1;
 
-        // Check tabs
-        for (int i = 0; i < tab_infos.length(); i++) {
-            var info = tab_infos.nth_data((uint)i);
-            if (x >= info.x && x <= info.x + info.width && y <= TAB_HEIGHT + 4) {
-                hover_index = i;
+        // Check window control buttons first
+        int width = get_width();
+        double btn_size = CTRL_BTN_SIZE;
+        double spacing = CTRL_BTN_SPACING;
+        double start_x = width - CTRL_BTN_AREA_WIDTH;
+        double hit_radius = btn_size / 2 + 3;
+
+        for (int i = 0; i < 3; i++) {
+            double btn_x = start_x + i * (btn_size + spacing);
+            if (Math.fabs(x - btn_x) <= hit_radius && Math.fabs(y - get_height() / 2) <= hit_radius) {
+                hover_control = i;
                 break;
             }
         }
 
-        if (old_hover != hover_index) {
+        // Check tabs (only if not hovering control buttons)
+        if (hover_control < 0) {
+            for (int i = 0; i < tab_infos.length(); i++) {
+                var info = tab_infos.nth_data((uint)i);
+                if (x >= info.x && x <= info.x + info.width && y <= TAB_HEIGHT + 4) {
+                    hover_index = i;
+                    break;
+                }
+            }
+        }
+
+        if (old_hover != hover_index || old_hover_control != hover_control) {
             queue_draw();
         }
     }
 
     private void on_leave() {
-        if (hover_index != -1) {
-            hover_index = -1;
+        bool need_redraw = hover_index != -1 || hover_control != -1;
+        hover_index = -1;
+        hover_control = -1;
+        if (need_redraw) {
             queue_draw();
         }
     }
 
-    private void on_click(int n_press, double x, double y) {
+    private void on_press(int n_press, double x, double y) {
+        // Check window control buttons - set pressed state
+        int width = get_width();
+        double btn_size = CTRL_BTN_SIZE;
+        double spacing = CTRL_BTN_SPACING;
+        double start_x = width - CTRL_BTN_AREA_WIDTH;
+        double hit_radius = btn_size / 2 + 3;
+
+        for (int i = 0; i < 3; i++) {
+            double btn_x = start_x + i * (btn_size + spacing);
+            if (Math.fabs(x - btn_x) <= hit_radius && Math.fabs(y - get_height() / 2) <= hit_radius) {
+                pressed_control = i;
+                queue_draw();
+                return;
+            }
+        }
+
+        pressed_control = -1;
+    }
+
+    private void on_release(int n_press, double x, double y) {
         // Check new tab button
-        double btn_x = get_new_tab_button_x();
-        if (x >= btn_x && x <= btn_x + NEW_TAB_BTN_SIZE && y <= TAB_HEIGHT + 4) {
+        double new_tab_x = get_new_tab_button_x();
+        if (x >= new_tab_x && x <= new_tab_x + NEW_TAB_BTN_SIZE && y <= TAB_HEIGHT + 4) {
+            pressed_control = -1;
             new_tab_requested();
             return;
         }
 
-        // Check window controls
+        // Check window controls - execute action if released on same button
         int width = get_width();
-        if (x >= width - 80) {
-            double btn_size = 12;
-            double spacing = 8;
-            double start_x = width - 80;
+        double btn_size = CTRL_BTN_SIZE;
+        double spacing = CTRL_BTN_SPACING;
+        double start_x = width - CTRL_BTN_AREA_WIDTH;
+        double hit_radius = btn_size / 2 + 3;
 
-            for (int i = 0; i < 3; i++) {
-                double bx = start_x + i * (btn_size + spacing);
-                double dist = Math.sqrt(Math.pow(x - bx, 2) + Math.pow(y - get_height() / 2, 2));
-                if (dist <= btn_size / 2) {
-                    if (i == 0) {
-                        // Minimize
-                        var window = get_root() as Gtk.Window;
-                        if (window != null) window.minimize();
-                    } else if (i == 1) {
-                        // Maximize
-                        var window = get_root() as Gtk.Window;
-                        if (window != null) {
+        for (int i = 0; i < 3; i++) {
+            double ctrl_x = start_x + i * (btn_size + spacing);
+            if (Math.fabs(x - ctrl_x) <= hit_radius && Math.fabs(y - get_height() / 2) <= hit_radius) {
+                // Only trigger if released on the same button that was pressed
+                if (pressed_control == i) {
+                    var window = get_root() as Gtk.Window;
+                    if (window != null) {
+                        if (i == 0) {
+                            window.minimize();
+                        } else if (i == 1) {
                             if (window.is_maximized()) {
                                 window.unmaximize();
                             } else {
                                 window.maximize();
                             }
+                        } else {
+                            window.close();
                         }
-                    } else {
-                        // Close
-                        var window = get_root() as Gtk.Window;
-                        if (window != null) window.close();
                     }
-                    return;
                 }
+                pressed_control = -1;
+                queue_draw();
+                return;
             }
         }
+
+        pressed_control = -1;
 
         // Check tab selection
         if (hover_index >= 0 && hover_index != active_index) {
