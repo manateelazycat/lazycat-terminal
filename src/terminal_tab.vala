@@ -87,12 +87,15 @@ public class TerminalTab : Gtk.Box {
         terminal.set_vexpand(true);
         terminal.set_hexpand(true);
 
-        // Connect signals
-        terminal.window_title_changed.connect(() => {
-            var title = terminal.get_window_title();
-            if (title != null && title.length > 0) {
-                tab_title = title;
-                title_changed(title);
+        // Connect signals - use termprop_changed for title updates (VTE 0.78+)
+        terminal.termprop_changed.connect((prop_name) => {
+            if (prop_name == "xterm.title") {
+                size_t length;
+                var title = terminal.get_termprop_string(prop_name, out length);
+                if (title != null && length > 0) {
+                    tab_title = title;
+                    title_changed(title);
+                }
             }
         });
 
