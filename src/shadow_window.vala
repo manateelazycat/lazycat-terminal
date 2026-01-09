@@ -55,6 +55,10 @@ public class ShadowWindow : Gtk.ApplicationWindow {
     private void load_shadow_css() {
         var provider = new Gtk.CssProvider();
         provider.load_from_string("""
+            window.shadow-window {
+                background-color: transparent;
+            }
+
             .shadow-window {
                 background-color: transparent;
             }
@@ -63,7 +67,6 @@ public class ShadowWindow : Gtk.ApplicationWindow {
                 background-color: transparent;
                 box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.35);
                 border-radius: 6px;
-                overflow: hidden;
                 transition: box-shadow 150ms ease-in-out, border-radius 150ms ease-in-out;
             }
 

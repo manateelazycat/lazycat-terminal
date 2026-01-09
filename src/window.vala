@@ -32,7 +32,6 @@ public class TerminalWindow : ShadowWindow {
             .transparent-window {
                 background-color: rgba(0, 0, 0, 0.88);
                 border-radius: 6px;
-                overflow: hidden;
             }
             .transparent-window.maximized {
                 border-radius: 0;
@@ -46,6 +45,18 @@ public class TerminalWindow : ShadowWindow {
                 border-radius: 0;
             }
             .terminal-container {
+                background-color: transparent;
+            }
+            .transparent-scroll {
+                background-color: transparent;
+            }
+            .transparent-scroll > * {
+                background-color: transparent;
+            }
+            scrolledwindow.transparent-scroll {
+                background-color: transparent;
+            }
+            .transparent-tab {
                 background-color: transparent;
             }
         """);

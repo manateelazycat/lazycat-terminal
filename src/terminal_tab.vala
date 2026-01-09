@@ -47,8 +47,12 @@ public class TerminalTab : Gtk.Box {
 
         // Background and Foreground
         var bg = Gdk.RGBA();
-        bg.parse("#000000");  // Black background
+        bg.red = 0.0f;
+        bg.green = 0.0f;
+        bg.blue = 0.0f;
+        bg.alpha = 0.88f;
         terminal.set_color_background(bg);
+        terminal.set_clear_background(false);  // Enable transparent background
 
         var fg = Gdk.RGBA();
         fg.parse("#00cd00");  // Green foreground
@@ -109,8 +113,12 @@ public class TerminalTab : Gtk.Box {
         scrolled.set_vexpand(true);
         scrolled.set_hexpand(true);
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
+        scrolled.add_css_class("transparent-scroll");
 
         append(scrolled);
+
+        // Make this container transparent
+        add_css_class("transparent-tab");
     }
 
     private void spawn_shell() {
