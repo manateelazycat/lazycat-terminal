@@ -239,17 +239,25 @@ public class TerminalTab : Gtk.Box {
         // Use higher opacity than window background (min 0.6, or +0.3 from current)
         double paned_opacity = double.max(0.6, double.min(1.0, current_opacity + 0.3));
 
-        // Create CSS with higher opacity for better visibility
+        // Create CSS with higher opacity for better visibility and wider handle for easier dragging
         string css = """
             .terminal-paned paned > separator {
                 background-color: rgba(%s, %s, %s, %f);
-                min-width: 1px;
-                min-height: 1px;
+                min-width: 2px;
+                min-height: 2px;
+            }
+            .terminal-paned paned > separator:hover {
+                background-color: rgba(%s, %s, %s, %f);
             }
         """.printf(
             separator_color == "#111" ? "0.067" : "0.733",  // R (17/255 or 187/255)
             separator_color == "#111" ? "0.067" : "0.733",  // G
             separator_color == "#111" ? "0.067" : "0.733",  // B
+            paned_opacity,
+            // Hover state - slightly brighter
+            separator_color == "#111" ? "0.2" : "0.867",  // Brighter on hover
+            separator_color == "#111" ? "0.2" : "0.867",
+            separator_color == "#111" ? "0.2" : "0.867",
             paned_opacity
         );
 
@@ -395,6 +403,10 @@ public class TerminalTab : Gtk.Box {
         paned.set_vexpand(true);
         paned.set_hexpand(true);
         paned.set_visible(true);
+        paned.set_resize_start_child(true);  // Allow resizing start child
+        paned.set_resize_end_child(true);    // Allow resizing end child
+        paned.set_shrink_start_child(false); // Prevent shrinking to 0
+        paned.set_shrink_end_child(false);   // Prevent shrinking to 0
         stdout.printf("DEBUG: Created paned\n");
 
         // Apply paned styling
@@ -496,6 +508,10 @@ public class TerminalTab : Gtk.Box {
         paned.set_vexpand(true);
         paned.set_hexpand(true);
         paned.set_visible(true);
+        paned.set_resize_start_child(true);  // Allow resizing start child
+        paned.set_resize_end_child(true);    // Allow resizing end child
+        paned.set_shrink_start_child(false); // Prevent shrinking to 0
+        paned.set_shrink_end_child(false);   // Prevent shrinking to 0
         stdout.printf("DEBUG: Created paned\n");
 
         // Apply paned styling
