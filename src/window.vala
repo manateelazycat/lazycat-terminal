@@ -247,6 +247,13 @@ public class TerminalWindow : ShadowWindow {
                             if (tab != null) tab.paste_clipboard();
                         }
                         return true;
+                    case Gdk.Key.A:
+                        // Ctrl+Shift+A: Select all
+                        if (tabs.length() > 0) {
+                            var tab = tabs.nth_data((uint)tab_bar.get_active_index());
+                            if (tab != null) tab.select_all();
+                        }
+                        return true;
                     case Gdk.Key.ISO_Left_Tab:
                         // Ctrl+Shift+Tab: Previous tab (cycles)
                         cycle_tab(-1);

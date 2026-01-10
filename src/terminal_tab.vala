@@ -194,4 +194,8 @@ public class TerminalTab : Gtk.Box {
     public void paste_clipboard() {
         terminal.paste_clipboard();
     }
+
+    public void select_all() {
+        terminal.select_all();
+    }
 }
