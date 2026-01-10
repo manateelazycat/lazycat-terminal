@@ -271,10 +271,12 @@ public class TerminalTab : Gtk.Box {
 
         background_color.alpha = (float)opacity;
 
-        // Apply to all terminals in the tab
-        foreach_terminal(root_widget, (terminal) => {
-            terminal.set_colors(foreground_color, background_color, color_palette);
-        });
+        // Apply to all terminals in the tab (only if root_widget is valid)
+        if (root_widget != null) {
+            foreach_terminal(root_widget, (terminal) => {
+                terminal.set_colors(foreground_color, background_color, color_palette);
+            });
+        }
 
         // Update paned separator style
         update_paned_style();
@@ -320,12 +322,15 @@ public class TerminalTab : Gtk.Box {
 
         paned_css_provider.load_from_string(css);
 
-        // Apply style to all paned widgets
-        apply_paned_style_to_widget(root_widget);
+        // Apply style to all paned widgets (only if root_widget is valid)
+        if (root_widget != null) {
+            apply_paned_style_to_widget(root_widget);
+        }
     }
 
     // Recursively apply paned style to all paned widgets in the tree
-    private void apply_paned_style_to_widget(Gtk.Widget widget) {
+    private void apply_paned_style_to_widget(Gtk.Widget? widget) {
+        if (widget == null) return;
         if (widget is Gtk.Paned) {
             var paned = (Gtk.Paned)widget;
 
@@ -374,10 +379,12 @@ public class TerminalTab : Gtk.Box {
         string mono_font = get_mono_font();
         var font = Pango.FontDescription.from_string(mono_font + " " + current_font_size.to_string());
 
-        // Apply to all terminals in the tab
-        foreach_terminal(root_widget, (terminal) => {
-            terminal.set_font(font);
-        });
+        // Apply to all terminals in the tab (only if root_widget is valid)
+        if (root_widget != null) {
+            foreach_terminal(root_widget, (terminal) => {
+                terminal.set_font(font);
+            });
+        }
     }
 
     public void copy_clipboard() {
@@ -677,10 +684,7 @@ public class TerminalTab : Gtk.Box {
             }
         }
 
-        // Destroy the widgets
-        terminal.unref();
-        scrolled.unref();
-        stdout.printf("DEBUG: Destroyed terminal and scrolled window\n");
+        stdout.printf("DEBUG: Removed terminal and scrolled window from parent\n");
 
         // Clean up unused parent containers
         clean_unused_parent(parent);
@@ -720,8 +724,6 @@ public class TerminalTab : Gtk.Box {
                         parent_paned.set_end_child(null);
                     }
                 }
-
-                paned.unref();
 
                 // Continue cleaning up parent
                 clean_unused_parent(parent);
@@ -781,9 +783,6 @@ public class TerminalTab : Gtk.Box {
                 parent_paned.set_end_child(child);
             }
         }
-
-        // Destroy the paned
-        paned.unref();
 
         // Focus a terminal in the child
         focus_terminal_in_widget(child);
@@ -1092,5 +1091,32 @@ public class TerminalTab : Gtk.Box {
 
     public void select_down_terminal() {
         select_vertical_terminal(false);
+    }
+
+    // Close the currently focused terminal
+    public void close_focused_terminal() {
+        if (focused_terminal != null) {
+            close_terminal(focused_terminal);
+        }
+    }
+
+    // Close all terminals except the focused one
+    public void close_other_terminals() {
+        if (focused_terminal == null) {
+            return;
+        }
+
+        // Create a copy of the list to avoid modifying it while iterating
+        List<Vte.Terminal> terminals_to_close = null;
+        foreach (var terminal in terminal_list) {
+            if (terminal != focused_terminal) {
+                terminals_to_close.append(terminal);
+            }
+        }
+
+        // Close all terminals except the focused one
+        foreach (var terminal in terminals_to_close) {
+            close_terminal(terminal);
+        }
     }
 }

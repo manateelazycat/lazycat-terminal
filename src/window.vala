@@ -295,6 +295,23 @@ public class TerminalWindow : ShadowWindow {
                         // Ctrl+Shift+Tab: Previous tab (cycles)
                         cycle_tab(-1);
                         return true;
+                    case Gdk.Key.Q:
+                        // Ctrl+Shift+Q: Close current VTE
+                        if (tabs.length() > 0) {
+                            var tab = tabs.nth_data((uint)tab_bar.get_active_index());
+                            if (tab != null) tab.close_focused_terminal();
+                        }
+                        return true;
+                }
+            } else if (ctrl && alt) {
+                switch (keyval) {
+                    case Gdk.Key.q:
+                        // Ctrl+Alt+q: Close all VTEs except current one
+                        if (tabs.length() > 0) {
+                            var tab = tabs.nth_data((uint)tab_bar.get_active_index());
+                            if (tab != null) tab.close_other_terminals();
+                        }
+                        return true;
                 }
             } else if (ctrl) {
                 switch (keyval) {
