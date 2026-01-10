@@ -71,6 +71,7 @@ public class SettingsDialog : Gtk.Window {
                 background-color: rgba(0, 0, 0, """ + background_opacity.to_string() + """);
                 border-radius: 8px;
                 border: 1px solid """ + fg_hex + """;
+                padding: 50px;
             }
         """;
 
@@ -107,26 +108,27 @@ public class SettingsDialog : Gtk.Window {
 
         main_box = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
         main_box.add_css_class("settings-dialog");
-        main_box.set_margin_start(20);
-        main_box.set_margin_end(20);
-        main_box.set_margin_top(30);
-        main_box.set_margin_bottom(20);
 
         // Three lists in horizontal layout
-        var lists_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 10);
-        lists_box.set_homogeneous(true);
+        var lists_box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 20);
         lists_box.set_vexpand(true);
 
-        // Font list
+        // Font list (1.5x width)
         font_list = new FontListWidget(foreground_color);
+        font_list.set_hexpand(true);
+        font_list.set_size_request(300, 300);  // Wider
         lists_box.append(font_list);
 
-        // Font size list
+        // Font size list (1/3 width)
         font_size_list = new FontSizeListWidget(foreground_color);
+        font_size_list.set_hexpand(false);
+        font_size_list.set_size_request(100, 300);  // Narrower
         lists_box.append(font_size_list);
 
-        // Theme list
+        // Theme list (normal width)
         theme_list = new ThemeListWidget(foreground_color);
+        theme_list.set_hexpand(true);
+        theme_list.set_size_request(200, 300);
         lists_box.append(theme_list);
 
         main_box.append(lists_box);
@@ -144,8 +146,8 @@ public class SettingsDialog : Gtk.Window {
         close_button.set_size_request(CLOSE_BTN_SIZE * 2 + 10, CLOSE_BTN_SIZE * 2 + 10);
         close_button.set_valign(Gtk.Align.START);
         close_button.set_halign(Gtk.Align.END);
-        close_button.set_margin_top(8);
-        close_button.set_margin_end(8);
+        close_button.set_margin_top(12);  // Increased for better spacing
+        close_button.set_margin_end(12);  // Increased for better spacing
         close_button.set_draw_func(draw_close_button);
 
         // Setup close button interactions
@@ -343,7 +345,7 @@ private abstract class SettingsListWidget : Gtk.DrawingArea {
     }
 
     protected void draw_border(Cairo.Context cr, int width, int height) {
-        // Draw border
+        // Draw rounded border
         cr.set_source_rgba(
             foreground_color.red,
             foreground_color.green,
@@ -351,7 +353,21 @@ private abstract class SettingsListWidget : Gtk.DrawingArea {
             is_focused ? 1.0 : 0.5
         );
         cr.set_line_width(is_focused ? 2.0 : 1.0);
-        cr.rectangle(0, 0, width, height);
+
+        // Draw rounded rectangle border
+        double radius = 5.0;
+        double line_width = is_focused ? 2.0 : 1.0;
+        double x = line_width / 2.0;
+        double y = line_width / 2.0;
+        double w = width - line_width;
+        double h = height - line_width;
+
+        cr.new_sub_path();
+        cr.arc(x + radius, y + radius, radius, Math.PI, 3 * Math.PI / 2);
+        cr.arc(x + w - radius, y + radius, radius, 3 * Math.PI / 2, 0);
+        cr.arc(x + w - radius, y + h - radius, radius, 0, Math.PI / 2);
+        cr.arc(x + radius, y + h - radius, radius, Math.PI / 2, Math.PI);
+        cr.close_path();
         cr.stroke();
     }
 
@@ -422,19 +438,19 @@ private class FontListWidget : SettingsListWidget {
         scroll_offset = int.min(scroll_offset, int.max(0, fonts.length - visible_items));
 
         // Draw items
-        cr.set_source_rgba(
-            foreground_color.red,
-            foreground_color.green,
-            foreground_color.blue,
-            1.0
-        );
-
         int y = PADDING;
         for (int i = scroll_offset; i < fonts.length && i < scroll_offset + visible_items; i++) {
             if (i == selected_index) {
                 draw_selection_rect(cr, y, width);
             }
 
+            // Always use VTE foreground color for text
+            cr.set_source_rgba(
+                foreground_color.red,
+                foreground_color.green,
+                foreground_color.blue,
+                1.0
+            );
             cr.move_to(PADDING + 5, y + ITEM_HEIGHT / 2 + 5);
             cr.show_text(fonts[i]);
             y += ITEM_HEIGHT;
@@ -471,19 +487,19 @@ private class FontSizeListWidget : SettingsListWidget {
         scroll_offset = int.min(scroll_offset, int.max(0, get_item_count() - visible_items));
 
         // Draw items
-        cr.set_source_rgba(
-            foreground_color.red,
-            foreground_color.green,
-            foreground_color.blue,
-            1.0
-        );
-
         int y = PADDING;
         for (int i = scroll_offset; i < get_item_count() && i < scroll_offset + visible_items; i++) {
             if (i == selected_index) {
                 draw_selection_rect(cr, y, width);
             }
 
+            // Always use VTE foreground color for text
+            cr.set_source_rgba(
+                foreground_color.red,
+                foreground_color.green,
+                foreground_color.blue,
+                1.0
+            );
             int size = MIN_SIZE + i;
             cr.move_to(PADDING + 5, y + ITEM_HEIGHT / 2 + 5);
             cr.show_text(size.to_string());
@@ -538,8 +554,49 @@ private class ThemeListWidget : SettingsListWidget {
             warning("Error loading themes: %s", e.message);
         }
 
+        // Sort themes by background brightness (darkest first, default always first)
+        sort_themes(ref theme_list, ref colors_list);
+
         theme_names = theme_list;
         theme_colors = colors_list;
+    }
+
+    private void sort_themes(ref string[] names, ref ThemeColors[] colors) {
+        // Bubble sort implementation
+        for (int i = 0; i < names.length - 1; i++) {
+            for (int j = 0; j < names.length - i - 1; j++) {
+                if (compare_themes(names[j], colors[j], names[j + 1], colors[j + 1]) > 0) {
+                    // Swap names
+                    string temp_name = names[j];
+                    names[j] = names[j + 1];
+                    names[j + 1] = temp_name;
+
+                    // Swap colors
+                    ThemeColors temp_color = colors[j];
+                    colors[j] = colors[j + 1];
+                    colors[j + 1] = temp_color;
+                }
+            }
+        }
+    }
+
+    private int compare_themes(string name1, ThemeColors colors1, string name2, ThemeColors colors2) {
+        // "default" always comes first
+        if (name1 == "default") return -1;
+        if (name2 == "default") return 1;
+
+        // Calculate brightness: darker (lower value) should come first
+        double brightness1 = get_color_brightness(colors1.background);
+        double brightness2 = get_color_brightness(colors2.background);
+
+        if (brightness1 < brightness2) return -1;
+        if (brightness1 > brightness2) return 1;
+        return 0;
+    }
+
+    private double get_color_brightness(Gdk.RGBA color) {
+        // Calculate perceived brightness (0.0 = black, 1.0 = white)
+        return 0.299 * color.red + 0.587 * color.green + 0.114 * color.blue;
     }
 
     private ThemeColors load_theme_colors(File theme_file) {
@@ -600,7 +657,9 @@ private class ThemeListWidget : SettingsListWidget {
 
         // Calculate visible range
         const int THEME_ITEM_HEIGHT = 60;
-        int visible_items = (height - PADDING * 2) / THEME_ITEM_HEIGHT;
+        const int THEME_ITEM_SPACING = 10;
+        const int THEME_ITEM_TOTAL = THEME_ITEM_HEIGHT + THEME_ITEM_SPACING;
+        int visible_items = (height - PADDING * 2) / THEME_ITEM_TOTAL;
         int scroll_offset = int.max(0, selected_index - visible_items / 2);
         scroll_offset = int.min(scroll_offset, int.max(0, theme_names.length - visible_items));
 
@@ -683,7 +742,7 @@ private class ThemeListWidget : SettingsListWidget {
             cr.move_to(x + 8, y + 40);
             cr.show_text(theme_names[i]);
 
-            y += THEME_ITEM_HEIGHT;
+            y += THEME_ITEM_TOTAL;
         }
     }
 }
@@ -714,37 +773,26 @@ private class TransparencySlider : Gtk.DrawingArea {
     }
 
     public void increase_value() {
-        value = double.min(1.0, value + 0.05);
+        value = double.min(1.0, value + 0.01);  // 1% increment
         queue_draw();
     }
 
     public void decrease_value() {
-        value = double.max(0.0, value - 0.05);
+        value = double.max(0.0, value - 0.01);  // 1% decrement
         queue_draw();
     }
 
     private void on_click(int n_press, double x, double y) {
         int width = get_width();
         double track_width = width - HANDLE_WIDTH;
-        value = double.max(0.0, double.min(1.0, (x - HANDLE_WIDTH / 2) / track_width));
+        double new_value = (x - HANDLE_WIDTH / 2) / track_width;
+        // Round to nearest 1%
+        value = double.max(0.0, double.min(1.0, Math.round(new_value * 100) / 100));
         queue_draw();
     }
 
     private void draw_slider(Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
-        // Draw border if focused
-        if (is_focused) {
-            cr.set_source_rgba(
-                foreground_color.red,
-                foreground_color.green,
-                foreground_color.blue,
-                1.0
-            );
-            cr.set_line_width(2.0);
-            cr.rectangle(0, 0, width, height);
-            cr.stroke();
-        }
-
-        // Draw track
+        // Draw track (background)
         double track_y = height / 2;
         double track_height = 4;
 
@@ -758,36 +806,29 @@ private class TransparencySlider : Gtk.DrawingArea {
                     width - HANDLE_WIDTH, track_height);
         cr.fill();
 
-        // Draw filled portion
+        // Draw filled portion with focus-dependent opacity
         double filled_width = (width - HANDLE_WIDTH) * value;
+        double fill_alpha = is_focused ? 1.0 : 0.5;
         cr.set_source_rgba(
             foreground_color.red,
             foreground_color.green,
             foreground_color.blue,
-            0.7
+            fill_alpha
         );
         cr.rectangle(HANDLE_WIDTH / 2, track_y - track_height / 2,
                     filled_width, track_height);
         cr.fill();
 
-        // Draw handle
+        // Draw handle with focus-dependent opacity
         double handle_x = HANDLE_WIDTH / 2 + filled_width;
         cr.set_source_rgba(
             foreground_color.red,
             foreground_color.green,
             foreground_color.blue,
-            1.0
+            fill_alpha
         );
         cr.rectangle(handle_x - HANDLE_WIDTH / 2, track_y - 8,
                     HANDLE_WIDTH, 16);
         cr.fill();
-
-        // Draw value text
-        string value_text = "%.0f%%".printf(value * 100);
-        cr.set_font_size(12);
-        Cairo.TextExtents extents;
-        cr.text_extents(value_text, out extents);
-        cr.move_to(width - extents.width - 5, height - 5);
-        cr.show_text(value_text);
     }
 }
