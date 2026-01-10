@@ -220,6 +220,12 @@ public class TerminalWindow : ShadowWindow {
             bool ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
             bool shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
 
+            // Debug: Print all Ctrl+Shift key presses
+            if (ctrl && shift) {
+                stdout.printf("DEBUG: Key pressed - keyval=%u (0x%x), keycode=%u, ctrl=%s, shift=%s\n",
+                    keyval, keyval, keycode, ctrl.to_string(), shift.to_string());
+            }
+
             if (ctrl && shift) {
                 switch (keyval) {
                     case Gdk.Key.T:
@@ -252,6 +258,30 @@ public class TerminalWindow : ShadowWindow {
                         if (tabs.length() > 0) {
                             var tab = tabs.nth_data((uint)tab_bar.get_active_index());
                             if (tab != null) tab.select_all();
+                        }
+                        return true;
+                    case Gdk.Key.J:
+                        // Ctrl+Shift+J: Split vertically (left-right)
+                        stdout.printf("DEBUG: Ctrl+Shift+J pressed\n");
+                        if (tabs.length() > 0) {
+                            var tab = tabs.nth_data((uint)tab_bar.get_active_index());
+                            stdout.printf("DEBUG: tab = %p\n", tab);
+                            if (tab != null) {
+                                stdout.printf("DEBUG: Calling split_vertical()\n");
+                                tab.split_vertical();
+                            }
+                        }
+                        return true;
+                    case Gdk.Key.H:
+                        // Ctrl+Shift+H: Split horizontally (top-bottom)
+                        stdout.printf("DEBUG: Ctrl+Shift+H pressed\n");
+                        if (tabs.length() > 0) {
+                            var tab = tabs.nth_data((uint)tab_bar.get_active_index());
+                            stdout.printf("DEBUG: tab = %p\n", tab);
+                            if (tab != null) {
+                                stdout.printf("DEBUG: Calling split_horizontal()\n");
+                                tab.split_horizontal();
+                            }
                         }
                         return true;
                     case Gdk.Key.ISO_Left_Tab:

@@ -1,7 +1,8 @@
-// Terminal Tab - Wrapper for VTE terminal widget
+// Terminal Tab - Wrapper for VTE terminal widget with split support
 
 public class TerminalTab : Gtk.Box {
-    private Vte.Terminal terminal;
+    private Gtk.Widget root_widget;  // Can be a scrolled window or a Paned
+    private Vte.Terminal? focused_terminal;  // Currently focused terminal
     public string tab_title { get; private set; }
     private Gdk.RGBA foreground_color;
     private Gdk.RGBA[] color_palette;
@@ -21,8 +22,19 @@ public class TerminalTab : Gtk.Box {
     }
 
     construct {
-        setup_terminal();
-        spawn_shell();
+        // Create initial terminal
+        var terminal = create_terminal();
+        focused_terminal = terminal;
+
+        // Wrap in scrolled window
+        var scrolled = create_scrolled_window(terminal);
+        root_widget = scrolled;
+
+        append(root_widget);
+        add_css_class("transparent-tab");
+
+        // Spawn shell in current directory
+        spawn_shell_in_terminal(terminal, null);
     }
 
     private static string get_mono_font() {
@@ -43,8 +55,8 @@ public class TerminalTab : Gtk.Box {
         return cached_mono_font;
     }
 
-    private void setup_terminal() {
-        terminal = new Vte.Terminal();
+    private Vte.Terminal create_terminal() {
+        var terminal = new Vte.Terminal();
 
         // Terminal appearance
         terminal.set_scrollback_lines(10000);
@@ -113,21 +125,27 @@ public class TerminalTab : Gtk.Box {
             close_requested();
         });
 
-        // Scrollbar
+        // Setup focus tracking using GTK4 EventControllerFocus
+        var focus_controller = new Gtk.EventControllerFocus();
+        focus_controller.enter.connect(() => {
+            focused_terminal = terminal;
+        });
+        terminal.add_controller(focus_controller);
+
+        return terminal;
+    }
+
+    private Gtk.ScrolledWindow create_scrolled_window(Vte.Terminal terminal) {
         var scrolled = new Gtk.ScrolledWindow();
         scrolled.set_child(terminal);
         scrolled.set_vexpand(true);
         scrolled.set_hexpand(true);
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC);
         scrolled.add_css_class("transparent-scroll");
-
-        append(scrolled);
-
-        // Make this container transparent
-        add_css_class("transparent-tab");
+        return scrolled;
     }
 
-    private void spawn_shell() {
+    private void spawn_shell_in_terminal(Vte.Terminal terminal, string? working_directory) {
         string? shell = Environment.get_variable("SHELL");
         if (shell == null) {
             shell = "/bin/bash";
@@ -136,9 +154,12 @@ public class TerminalTab : Gtk.Box {
         string[] argv = { shell };
         string[]? envv = Environ.get();
 
+        // Use provided working directory or current directory
+        string cwd = working_directory ?? Environment.get_current_dir();
+
         terminal.spawn_async(
             Vte.PtyFlags.DEFAULT,
-            Environment.get_current_dir(),
+            cwd,
             argv,
             envv,
             0,  // GLib.SpawnFlags
@@ -150,8 +171,29 @@ public class TerminalTab : Gtk.Box {
     }
 
     public new void grab_focus() {
-        terminal.grab_focus();
+        if (focused_terminal != null) {
+            focused_terminal.grab_focus();
+        }
     }
+
+    // Helper method to recursively find all terminals in the widget tree
+    private void foreach_terminal(Gtk.Widget widget, owned TerminalCallback callback) {
+        if (widget is Vte.Terminal) {
+            callback((Vte.Terminal)widget);
+        } else if (widget is Gtk.Paned) {
+            var paned = (Gtk.Paned)widget;
+            var start_child = paned.get_start_child();
+            var end_child = paned.get_end_child();
+            if (start_child != null) foreach_terminal(start_child, callback);
+            if (end_child != null) foreach_terminal(end_child, callback);
+        } else if (widget is Gtk.ScrolledWindow) {
+            var scrolled = (Gtk.ScrolledWindow)widget;
+            var child = scrolled.get_child();
+            if (child != null) foreach_terminal(child, callback);
+        }
+    }
+
+    private delegate void TerminalCallback(Vte.Terminal terminal);
 
     public void set_background_opacity(double opacity) {
         var bg = Gdk.RGBA();
@@ -159,7 +201,11 @@ public class TerminalTab : Gtk.Box {
         bg.green = 0.0f;
         bg.blue = 0.0f;
         bg.alpha = (float)opacity;
-        terminal.set_colors(foreground_color, bg, color_palette);
+
+        // Apply to all terminals in the tab
+        foreach_terminal(root_widget, (terminal) => {
+            terminal.set_colors(foreground_color, bg, color_palette);
+        });
     }
 
     public void increase_font_size() {
@@ -184,18 +230,243 @@ public class TerminalTab : Gtk.Box {
     private void update_font() {
         string mono_font = get_mono_font();
         var font = Pango.FontDescription.from_string(mono_font + " " + current_font_size.to_string());
-        terminal.set_font(font);
+
+        // Apply to all terminals in the tab
+        foreach_terminal(root_widget, (terminal) => {
+            terminal.set_font(font);
+        });
     }
 
     public void copy_clipboard() {
-        terminal.copy_clipboard_format(Vte.Format.TEXT);
+        if (focused_terminal != null) {
+            focused_terminal.copy_clipboard_format(Vte.Format.TEXT);
+        }
     }
 
     public void paste_clipboard() {
-        terminal.paste_clipboard();
+        if (focused_terminal != null) {
+            focused_terminal.paste_clipboard();
+        }
     }
 
     public void select_all() {
-        terminal.select_all();
+        if (focused_terminal != null) {
+            focused_terminal.select_all();
+        }
+    }
+
+    // Get current working directory from focused terminal
+    private string? get_current_working_directory() {
+        if (focused_terminal == null) {
+            return null;
+        }
+
+        string? uri = focused_terminal.get_current_directory_uri();
+        if (uri == null) {
+            return null;
+        }
+
+        // Convert URI to path (e.g., "file:///home/user" -> "/home/user")
+        if (uri.has_prefix("file://")) {
+            return uri.substring(7);
+        }
+
+        return null;
+    }
+
+    // Split the focused terminal vertically (left-right)
+    public void split_vertical() {
+        stdout.printf("DEBUG: split_vertical() called\n");
+
+        if (focused_terminal == null) {
+            stdout.printf("DEBUG: focused_terminal is null, returning\n");
+            return;
+        }
+        stdout.printf("DEBUG: focused_terminal = %p\n", focused_terminal);
+
+        // Get current working directory
+        string? cwd = get_current_working_directory();
+        stdout.printf("DEBUG: cwd = %s\n", cwd ?? "null");
+
+        // Create new terminal
+        var new_terminal = create_terminal();
+        var new_scrolled = create_scrolled_window(new_terminal);
+        new_scrolled.set_visible(true);
+        new_terminal.set_visible(true);
+        stdout.printf("DEBUG: Created new terminal and scrolled window\n");
+
+        // Find the parent of the focused terminal's scrolled window
+        Gtk.Widget? focused_scrolled = focused_terminal.get_parent();
+        stdout.printf("DEBUG: focused_scrolled = %p\n", focused_scrolled);
+
+        if (focused_scrolled == null || !(focused_scrolled is Gtk.ScrolledWindow)) {
+            stdout.printf("DEBUG: focused_scrolled is null or not a ScrolledWindow, returning\n");
+            return;
+        }
+
+        // Get allocation BEFORE removing from parent
+        Gtk.Allocation alloc;
+        focused_scrolled.get_allocation(out alloc);
+        stdout.printf("DEBUG: focused_scrolled allocation: width=%d, height=%d\n", alloc.width, alloc.height);
+
+        Gtk.Widget? parent = focused_scrolled.get_parent();
+        stdout.printf("DEBUG: parent = %p, this = %p\n", parent, this);
+
+        // Create a horizontal paned (for vertical split - left/right)
+        var paned = new Gtk.Paned(Gtk.Orientation.HORIZONTAL);
+        paned.set_vexpand(true);
+        paned.set_hexpand(true);
+        paned.set_visible(true);
+        stdout.printf("DEBUG: Created paned\n");
+
+        if (parent == this) {
+            stdout.printf("DEBUG: parent == this, replacing root widget\n");
+            // The focused terminal is the root widget
+            remove(focused_scrolled);
+            paned.set_start_child(focused_scrolled);
+            paned.set_end_child(new_scrolled);
+            paned.set_position(alloc.width / 2);
+            root_widget = paned;
+            append(paned);
+            stdout.printf("DEBUG: Replaced root widget with paned\n");
+        } else if (parent is Gtk.Paned) {
+            stdout.printf("DEBUG: parent is Paned, inserting into existing paned\n");
+            // The focused terminal is in a paned
+            var parent_paned = (Gtk.Paned)parent;
+
+            // Determine which child the focused terminal is
+            if (parent_paned.get_start_child() == focused_scrolled) {
+                parent_paned.set_start_child(null);
+                paned.set_start_child(focused_scrolled);
+                paned.set_end_child(new_scrolled);
+                parent_paned.set_start_child(paned);
+            } else {
+                parent_paned.set_end_child(null);
+                paned.set_start_child(focused_scrolled);
+                paned.set_end_child(new_scrolled);
+                parent_paned.set_end_child(paned);
+            }
+
+            paned.set_position(alloc.width / 2);
+            stdout.printf("DEBUG: Inserted into existing paned\n");
+        } else {
+            stdout.printf("DEBUG: parent is neither this nor Paned, doing nothing\n");
+        }
+
+        // Spawn shell in new terminal with same working directory
+        spawn_shell_in_terminal(new_terminal, cwd);
+        stdout.printf("DEBUG: Spawned shell in new terminal\n");
+
+        // Show all widgets and update layout
+        this.show();
+        paned.show();
+        focused_scrolled.show();
+        new_scrolled.show();
+        new_terminal.show();
+        this.queue_resize();
+        stdout.printf("DEBUG: Called show() and queue_resize()\n");
+
+        // Focus the new terminal
+        focused_terminal = new_terminal;
+        new_terminal.grab_focus();
+        stdout.printf("DEBUG: Focused new terminal\n");
+    }
+
+    // Split the focused terminal horizontally (top-bottom)
+    public void split_horizontal() {
+        stdout.printf("DEBUG: split_horizontal() called\n");
+
+        if (focused_terminal == null) {
+            stdout.printf("DEBUG: focused_terminal is null, returning\n");
+            return;
+        }
+        stdout.printf("DEBUG: focused_terminal = %p\n", focused_terminal);
+
+        // Get current working directory
+        string? cwd = get_current_working_directory();
+        stdout.printf("DEBUG: cwd = %s\n", cwd ?? "null");
+
+        // Create new terminal
+        var new_terminal = create_terminal();
+        var new_scrolled = create_scrolled_window(new_terminal);
+        new_scrolled.set_visible(true);
+        new_terminal.set_visible(true);
+        stdout.printf("DEBUG: Created new terminal and scrolled window\n");
+
+        // Find the parent of the focused terminal's scrolled window
+        Gtk.Widget? focused_scrolled = focused_terminal.get_parent();
+        stdout.printf("DEBUG: focused_scrolled = %p\n", focused_scrolled);
+
+        if (focused_scrolled == null || !(focused_scrolled is Gtk.ScrolledWindow)) {
+            stdout.printf("DEBUG: focused_scrolled is null or not a ScrolledWindow, returning\n");
+            return;
+        }
+
+        // Get allocation BEFORE removing from parent
+        Gtk.Allocation alloc;
+        focused_scrolled.get_allocation(out alloc);
+        stdout.printf("DEBUG: focused_scrolled allocation: width=%d, height=%d\n", alloc.width, alloc.height);
+
+        Gtk.Widget? parent = focused_scrolled.get_parent();
+        stdout.printf("DEBUG: parent = %p, this = %p\n", parent, this);
+
+        // Create a vertical paned (for horizontal split - top/bottom)
+        var paned = new Gtk.Paned(Gtk.Orientation.VERTICAL);
+        paned.set_vexpand(true);
+        paned.set_hexpand(true);
+        paned.set_visible(true);
+        stdout.printf("DEBUG: Created paned\n");
+
+        if (parent == this) {
+            stdout.printf("DEBUG: parent == this, replacing root widget\n");
+            // The focused terminal is the root widget
+            remove(focused_scrolled);
+            paned.set_start_child(focused_scrolled);
+            paned.set_end_child(new_scrolled);
+            paned.set_position(alloc.height / 2);
+            root_widget = paned;
+            append(paned);
+            stdout.printf("DEBUG: Replaced root widget with paned\n");
+        } else if (parent is Gtk.Paned) {
+            stdout.printf("DEBUG: parent is Paned, inserting into existing paned\n");
+            // The focused terminal is in a paned
+            var parent_paned = (Gtk.Paned)parent;
+
+            // Determine which child the focused terminal is
+            if (parent_paned.get_start_child() == focused_scrolled) {
+                parent_paned.set_start_child(null);
+                paned.set_start_child(focused_scrolled);
+                paned.set_end_child(new_scrolled);
+                parent_paned.set_start_child(paned);
+            } else {
+                parent_paned.set_end_child(null);
+                paned.set_start_child(focused_scrolled);
+                paned.set_end_child(new_scrolled);
+                parent_paned.set_end_child(paned);
+            }
+
+            paned.set_position(alloc.height / 2);
+            stdout.printf("DEBUG: Inserted into existing paned\n");
+        } else {
+            stdout.printf("DEBUG: parent is neither this nor Paned, doing nothing\n");
+        }
+
+        // Spawn shell in new terminal with same working directory
+        spawn_shell_in_terminal(new_terminal, cwd);
+        stdout.printf("DEBUG: Spawned shell in new terminal\n");
+
+        // Show all widgets and update layout
+        this.show();
+        paned.show();
+        focused_scrolled.show();
+        new_scrolled.show();
+        new_terminal.show();
+        this.queue_resize();
+        stdout.printf("DEBUG: Called show() and queue_resize()\n");
+
+        // Focus the new terminal
+        focused_terminal = new_terminal;
+        new_terminal.grab_focus();
+        stdout.printf("DEBUG: Focused new terminal\n");
     }
 }
