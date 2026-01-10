@@ -15,6 +15,16 @@ public class TerminalTab : Gtk.Box {
     private HashTable<Vte.Terminal, bool> press_anything;  // Track if user pressed any key in terminal
     public bool is_active_tab { get; set; default = false; }  // Track if this tab is currently active
 
+    // Command execution support
+    private bool child_has_exit = false;
+    private bool has_print_exit_notify = false;
+    private bool _is_first_tab = false;
+
+    public bool is_first_tab {
+        get { return _is_first_tab; }
+        set { _is_first_tab = value; }
+    }
+
     // Search box components
     private Gtk.Box? search_box = null;
     private Gtk.Entry? search_entry = null;
@@ -33,9 +43,36 @@ public class TerminalTab : Gtk.Box {
     public signal void close_requested();
     public signal void background_activity();  // Signal when background terminal has activity
 
-    public TerminalTab(string title) {
+    public TerminalTab(string title, bool first_tab = false) {
         Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         tab_title = title;
+        is_first_tab = first_tab;
+
+        // Initialize shell/command after construct block
+        GLib.Idle.add(() => {
+            initialize_terminal();
+            return false;
+        });
+    }
+
+    private void initialize_terminal() {
+        if (focused_terminal == null) {
+            return;
+        }
+
+        // Check if we need to launch a command or spawn a shell
+        stderr.printf("DEBUG: initialize_terminal() - is_first_tab=%s\n", is_first_tab.to_string());
+        stderr.printf("DEBUG: initialize_terminal() - is_launch_command()=%s\n", is_launch_command().to_string());
+        stderr.printf("DEBUG: initialize_terminal() - launch_commands.length=%d\n", LazyCatTerminal.launch_commands.length);
+
+        if (is_launch_command() && is_first_tab) {
+            stderr.printf("DEBUG: Launching command instead of shell\n");
+            launch_command(focused_terminal, LazyCatTerminal.working_directory);
+        } else {
+            stderr.printf("DEBUG: Spawning shell\n");
+            // Spawn shell in current directory
+            spawn_shell_in_terminal(focused_terminal, null);
+        }
     }
 
     construct {
@@ -80,8 +117,9 @@ public class TerminalTab : Gtk.Box {
         append(overlay);
         add_css_class("transparent-tab");
 
-        // Spawn shell in current directory
-        spawn_shell_in_terminal(terminal, null);
+        // Note: Terminal initialization (spawn shell or launch command)
+        // is deferred to initialize_terminal() which is called via GLib.Idle.add()
+        // in the constructor, after is_first_tab has been properly set.
     }
 
     private static string get_mono_font() {
@@ -191,12 +229,32 @@ public class TerminalTab : Gtk.Box {
         });
 
         terminal.child_exited.connect(() => {
-            close_terminal(terminal);
+            stderr.printf("DEBUG: child_exited signal - is_launch_command()=%s, is_first_tab=%s\n",
+                is_launch_command().to_string(), is_first_tab.to_string());
+
+            // If this is a command execution, handle it differently
+            if (is_launch_command() && is_first_tab) {
+                stderr.printf("DEBUG: Command execution finished, setting child_has_exit=true\n");
+                child_has_exit = true;
+                print_exit_notify(terminal);
+            } else {
+                stderr.printf("DEBUG: Shell exited, closing terminal normally\n");
+                close_terminal(terminal);
+            }
         });
 
         // Setup key press tracking
         var key_controller = new Gtk.EventControllerKey();
         key_controller.key_pressed.connect((keyval, keycode, state) => {
+            // Exit terminal if got 'child_exited' signal by command execute finish
+            if (child_has_exit && is_launch_command() && is_first_tab) {
+                if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter) {
+                    // Close the terminal when Enter is pressed after command completes
+                    close_terminal(terminal);
+                    return true;
+                }
+            }
+
             // Set press_anything flag when user presses any key
             press_anything.set(terminal, true);
             stdout.printf("DEBUG: Key pressed in terminal %p, press_anything set to true\n", terminal);
@@ -1606,5 +1664,54 @@ public class TerminalTab : Gtk.Box {
             on_confirmed();
         });
         dialog.present();
+    }
+
+    // Check if we need to launch a command
+    private bool is_launch_command() {
+        return LazyCatTerminal.launch_commands.length > 0;
+    }
+
+    // Launch command instead of shell
+    private void launch_command(Vte.Terminal terminal, string? working_directory) {
+        string[] argv = LazyCatTerminal.launch_commands;
+        string[]? envv = Environ.get();
+
+        // Use provided working directory or current directory
+        string cwd = working_directory ?? Environment.get_current_dir();
+
+        terminal.spawn_async(
+            Vte.PtyFlags.DEFAULT,
+            cwd,
+            argv,
+            envv,
+            GLib.SpawnFlags.SEARCH_PATH,
+            null,
+            -1,
+            null,
+            (term, pid, error) => {
+                if (error != null) {
+                    stderr.printf("Error spawning command: %s\n", error.message);
+                } else {
+                    // Store the child pid
+                    terminal_pids.set(terminal, (int)pid);
+                    stdout.printf("Spawned command with pid=%d for terminal %p\n", (int)pid, terminal);
+                }
+            }
+        );
+    }
+
+    // Print exit notification after command completes
+    private void print_exit_notify(Vte.Terminal terminal) {
+        if (!has_print_exit_notify) {
+            GLib.Timeout.add(200, () => {
+                // Use feed to directly output text to terminal without spawning a new process
+                string message = "\r\nCommand has been completed, press ENTER to exit the terminal.\r\n";
+                terminal.feed(message.data);
+
+                return false;
+            });
+
+            has_print_exit_notify = true;
+        }
     }
 }

@@ -483,7 +483,10 @@ public class TerminalWindow : ShadowWindow {
 
     public void add_new_tab() {
         tab_counter++;
-        var tab = new TerminalTab("Terminal " + tab_counter.to_string());
+        bool is_first_tab = (tab_counter == 1);
+        stderr.printf("DEBUG: add_new_tab() called - tab_counter=%d, is_first_tab=%s\n",
+            tab_counter, is_first_tab.to_string());
+        var tab = new TerminalTab("Terminal " + tab_counter.to_string(), is_first_tab);
 
         // Set initial background opacity
         tab.set_background_opacity(background_opacity);
