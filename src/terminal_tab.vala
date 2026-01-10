@@ -11,6 +11,7 @@ public class TerminalTab : Gtk.Box {
     private Gtk.CssProvider paned_css_provider;
     private double current_opacity = 0.88;
     private HashTable<Vte.Terminal, string> terminal_titles;  // Store title for each terminal
+    private HashTable<Vte.Terminal, int> terminal_pids;  // Store child pid for each terminal
 
     private static string? cached_mono_font = null;
     private const int DEFAULT_FONT_SIZE = 14;
@@ -32,6 +33,9 @@ public class TerminalTab : Gtk.Box {
 
         // Initialize terminal titles hash table
         terminal_titles = new HashTable<Vte.Terminal, string>(direct_hash, direct_equal);
+
+        // Initialize terminal pids hash table
+        terminal_pids = new HashTable<Vte.Terminal, int>(direct_hash, direct_equal);
 
         // Initialize CSS provider for paned styling
         paned_css_provider = new Gtk.CssProvider();
@@ -199,13 +203,59 @@ public class TerminalTab : Gtk.Box {
             null,
             -1,
             null,
-            null
+            (term, pid, error) => {
+                if (error != null) {
+                    stderr.printf("Error spawning shell: %s\n", error.message);
+                } else {
+                    // Store the child pid
+                    terminal_pids.set(terminal, (int)pid);
+                    stdout.printf("DEBUG: Spawned shell with pid=%d for terminal %p\n", (int)pid, terminal);
+                }
+            }
         );
     }
 
     public new void grab_focus() {
         if (focused_terminal != null) {
             focused_terminal.grab_focus();
+        }
+    }
+
+    // Check if terminal has a foreground process
+    private bool try_get_foreground_pid(Vte.Terminal terminal, out int pid) {
+        if (terminal.get_pty() == null) {
+            pid = -1;
+            return false;
+        }
+
+        int? child_pid = terminal_pids.get(terminal);
+        if (child_pid == null) {
+            pid = -1;
+            return false;
+        }
+
+        int pty_fd = terminal.get_pty().fd;
+        int fgpid = Posix.tcgetpgrp(pty_fd);
+
+        if (fgpid != child_pid && fgpid > 0) {
+            pid = fgpid;
+            return true;
+        } else {
+            pid = -1;
+            return false;
+        }
+    }
+
+    private bool has_foreground_process(Vte.Terminal terminal) {
+        int pid;
+        return try_get_foreground_pid(terminal, out pid);
+    }
+
+    private void kill_foreground_process(Vte.Terminal terminal) {
+        int fg_pid;
+        if (try_get_foreground_pid(terminal, out fg_pid)) {
+            stdout.printf("DEBUG: Killing foreground process %d\n", fg_pid);
+            Posix.kill(fg_pid, Posix.Signal.KILL);
         }
     }
 
@@ -1095,7 +1145,17 @@ public class TerminalTab : Gtk.Box {
 
     // Close the currently focused terminal
     public void close_focused_terminal() {
-        if (focused_terminal != null) {
+        if (focused_terminal == null) {
+            return;
+        }
+
+        // Check if terminal has foreground process
+        if (has_foreground_process(focused_terminal)) {
+            show_close_confirmation_dialog(focused_terminal, () => {
+                kill_foreground_process(focused_terminal);
+                close_terminal(focused_terminal);
+            });
+        } else {
             close_terminal(focused_terminal);
         }
     }
@@ -1108,15 +1168,81 @@ public class TerminalTab : Gtk.Box {
 
         // Create a copy of the list to avoid modifying it while iterating
         List<Vte.Terminal> terminals_to_close = null;
+        bool has_active_processes = false;
+
         foreach (var terminal in terminal_list) {
             if (terminal != focused_terminal) {
                 terminals_to_close.append(terminal);
+                if (has_foreground_process(terminal)) {
+                    has_active_processes = true;
+                }
             }
         }
 
-        // Close all terminals except the focused one
-        foreach (var terminal in terminals_to_close) {
-            close_terminal(terminal);
+        if (has_active_processes) {
+            // Show confirmation for all terminals with active processes
+            show_close_confirmation_dialog(null, () => {
+                foreach (var terminal in terminals_to_close) {
+                    kill_foreground_process(terminal);
+                    close_terminal(terminal);
+                }
+            });
+        } else {
+            // Close all terminals without confirmation
+            foreach (var terminal in terminals_to_close) {
+                close_terminal(terminal);
+            }
         }
+    }
+
+    // Check if any terminal in the tab has foreground process
+    public bool has_any_foreground_process() {
+        foreach (var terminal in terminal_list) {
+            if (has_foreground_process(terminal)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public delegate void VoidCallback();
+
+    // Close all terminals in the tab (for window close)
+    public void close_all_terminals(owned VoidCallback? callback) {
+        if (has_any_foreground_process()) {
+            show_close_confirmation_dialog(null, () => {
+                foreach (var terminal in terminal_list) {
+                    kill_foreground_process(terminal);
+                }
+                if (callback != null) {
+                    callback();
+                }
+            });
+        } else {
+            if (callback != null) {
+                callback();
+            }
+        }
+    }
+
+    // Show confirmation dialog for closing terminal with active process
+    private void show_close_confirmation_dialog(Vte.Terminal? specific_terminal, owned VoidCallback on_confirmed) {
+        var window = (Gtk.Window)this.get_root();
+        if (window == null) {
+            return;
+        }
+
+        string message;
+        if (specific_terminal != null) {
+            message = "终端中有正在运行的进程\n是否确认结束？";
+        } else {
+            message = "有终端正在运行进程\n是否确认全部结束？";
+        }
+
+        var dialog = new ConfirmDialog(window, message, foreground_color);
+        dialog.confirmed.connect(() => {
+            on_confirmed();
+        });
+        dialog.present();
     }
 }

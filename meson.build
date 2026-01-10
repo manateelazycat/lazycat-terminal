@@ -35,6 +35,7 @@ vala_sources = files(
   'src/window.vala',
   'src/tab_bar.vala',
   'src/terminal_tab.vala',
+  'src/confirm_dialog.vala',
 )
 
 executable('lazycat-terminal',

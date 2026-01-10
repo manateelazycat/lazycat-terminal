@@ -19,6 +19,7 @@ public class TerminalWindow : ShadowWindow {
         setup_layout();
         add_new_tab();
         setup_snap_detection();
+        setup_close_handler();
     }
 
     private void setup_window() {
@@ -502,6 +503,20 @@ public class TerminalWindow : ShadowWindow {
         int index = tabs.index(tab);
         if (index < 0) return;
 
+        // Check if tab has any foreground processes
+        if (tab.has_any_foreground_process()) {
+            tab.close_all_terminals(() => {
+                actually_close_tab(tab);
+            });
+        } else {
+            actually_close_tab(tab);
+        }
+    }
+
+    private void actually_close_tab(TerminalTab tab) {
+        int index = tabs.index(tab);
+        if (index < 0) return;
+
         tabs.remove(tab);
         stack.remove(tab);
         tab_bar.remove_tab(index);
@@ -530,6 +545,44 @@ public class TerminalWindow : ShadowWindow {
             detect_snap_position();
             return true;
         });
+    }
+
+    private void setup_close_handler() {
+        close_request.connect(() => {
+            // Check if any tab has foreground processes
+            bool has_any_process = false;
+            foreach (var tab in tabs) {
+                if (tab.has_any_foreground_process()) {
+                    has_any_process = true;
+                    break;
+                }
+            }
+
+            if (has_any_process) {
+                // Show confirmation dialog and prevent immediate close
+                var first_tab = tabs.nth_data(0);
+                if (first_tab != null) {
+                    first_tab.close_all_terminals(() => {
+                        // After confirmation, close all tabs
+                        force_close_all_tabs();
+                    });
+                }
+                return true;  // Prevent close
+            }
+
+            // No active processes, allow close
+            return false;
+        });
+    }
+
+    private void force_close_all_tabs() {
+        // Close all tabs without checking for processes
+        while (tabs.length() > 0) {
+            var tab = tabs.nth_data(0);
+            tabs.remove(tab);
+            stack.remove(tab);
+        }
+        close();
     }
 
     private void detect_snap_position() {
