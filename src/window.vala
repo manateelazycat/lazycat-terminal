@@ -910,6 +910,21 @@ public class TerminalWindow : ShadowWindow {
         foreach (var tab in tabs) {
             tab.apply_theme(theme_name);
         }
+
+        // Update settings dialog if it's open
+        if (settings_dialog != null) {
+            // Get updated foreground color from current tab
+            Gdk.RGBA fg_color = Gdk.RGBA();
+            fg_color.parse("#00cd00"); // Default
+            if (tabs.length() > 0) {
+                var tab = tabs.nth_data((uint)tab_bar.get_active_index());
+                if (tab != null) {
+                    fg_color = tab.get_foreground_color();
+                }
+            }
+            settings_dialog.update_theme_colors(fg_color, background_color);
+        }
+
         // Reload window UI with new theme colors
         update_opacity_css();
     }

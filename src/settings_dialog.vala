@@ -343,6 +343,29 @@ public class SettingsDialog : Gtk.Window {
     private void apply_opacity() {
         opacity_changed(transparency_slider.get_value());
     }
+
+    // Update dialog colors when theme changes
+    public void update_theme_colors(Gdk.RGBA new_fg_color, Gdk.RGBA new_bg_color) {
+        foreground_color = new_fg_color;
+        background_color = new_bg_color;
+
+        // Reload CSS with new colors
+        load_css();
+
+        // Update list widgets with new foreground color
+        if (font_list != null) {
+            font_list.update_foreground_color(new_fg_color);
+        }
+        if (font_size_list != null) {
+            font_size_list.update_foreground_color(new_fg_color);
+        }
+        if (theme_list != null) {
+            theme_list.update_foreground_color(new_fg_color);
+        }
+        if (transparency_slider != null) {
+            transparency_slider.update_foreground_color(new_fg_color);
+        }
+    }
 }
 
 // Base class for settings list widgets
@@ -382,6 +405,11 @@ private abstract class SettingsListWidget : Gtk.DrawingArea {
 
     public void set_focused(bool focused) {
         is_focused = focused;
+        queue_draw();
+    }
+
+    public void update_foreground_color(Gdk.RGBA new_fg_color) {
+        foreground_color = new_fg_color;
         queue_draw();
     }
 
@@ -920,6 +948,11 @@ private class TransparencySlider : Gtk.DrawingArea {
 
     public void set_focused(bool focused) {
         is_focused = focused;
+        queue_draw();
+    }
+
+    public void update_foreground_color(Gdk.RGBA new_fg_color) {
+        foreground_color = new_fg_color;
         queue_draw();
     }
 
