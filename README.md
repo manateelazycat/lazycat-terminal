@@ -41,8 +41,6 @@ yay -S lazycat-terminal
 | `Ctrl+Shift+W` | 关闭当前标签页 |
 | `Ctrl+Tab` | 切换到下一个标签页 |
 | `Ctrl+Shift+Tab` | 切换到上一个标签页 |
-| `Ctrl+PageDown` | 切换到下一个标签页 |
-| `Ctrl+PageUp` | 切换到上一个标签页 |
 
 #### 分屏操作
 

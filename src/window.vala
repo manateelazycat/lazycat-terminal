@@ -508,17 +508,6 @@ public class TerminalWindow : ShadowWindow {
                 return true;
             }
 
-            // Legacy support for Ctrl+PageUp/PageDown
-            if (ctrl) {
-                if (keyval == Gdk.Key.Page_Up) {
-                    cycle_tab(-1);
-                    return true;
-                } else if (keyval == Gdk.Key.Page_Down) {
-                    cycle_tab(1);
-                    return true;
-                }
-            }
-
             return false;
         });
         ((Gtk.Widget)this).add_controller(controller);
