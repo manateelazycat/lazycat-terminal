@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=LazyCat Terminal
+Comment=A modern tabbed terminal emulator
+Exec=/home/andy/lazycat-terminal/build/lazycat-terminal
+Icon=lazycat-terminal
+Terminal=false
+Type=Application
+Categories=System;TerminalEmulator;
+StartupNotify=true
+StartupWMClass=lazycat-terminal

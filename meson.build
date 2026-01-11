@@ -25,6 +25,7 @@ font_utils_lib = static_library('font_utils',
 vala_deps = [
   dependency('gtk4'),
   dependency('vte-2.91-gtk4'),
+  dependency('gdk-pixbuf-2.0'),
   meson.get_compiler('vala').find_library('posix'),
   cc.find_library('m', required: true),
 ]

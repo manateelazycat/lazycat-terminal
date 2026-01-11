@@ -333,8 +333,6 @@ public class TerminalTab : Gtk.Box {
                 var state = event.get_modifier_state();
                 bool ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
 
-                stderr.printf("Click detected: ctrl=%s, x=%f, y=%f\n", ctrl.to_string(), x, y);
-
                 if (ctrl) {
                     // Convert pixel coordinates to character cell coordinates
                     double char_width = terminal.get_char_width();
@@ -343,17 +341,12 @@ public class TerminalTab : Gtk.Box {
                     long column = (long)(x / char_width);
                     long row = (long)(y / char_height);
 
-                    stderr.printf("Character position: column=%ld, row=%ld\n", column, row);
-
                     // Check if clicked on a URL using character coordinates
                     int tag;
                     string? url = terminal.match_check(column, row, out tag);
 
-                    stderr.printf("URL at click position: %s\n", url ?? "null");
-
                     if (url != null) {
                         // Open URL in default browser
-                        stderr.printf("Opening URL: %s\n", url);
                         open_url(url);
                     }
                 }

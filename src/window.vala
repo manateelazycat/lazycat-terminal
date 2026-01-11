@@ -43,8 +43,30 @@ public class TerminalWindow : ShadowWindow {
     private void setup_window() {
         set_title("LazyCat Terminal");
 
+        // Set window icon
+        setup_icon();
+
         // Add CSS for styling
         load_css();
+    }
+
+    private void setup_icon() {
+        // Add icon search paths to icon theme
+        // Window managers will look for icons based on WM_CLASS (lazycat-terminal)
+        var icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default());
+
+        // Add custom icon search paths for different sizes
+        string[] icon_paths = {
+            "./icons/32x32",
+            "./icons/48x48",
+            "./icons/96x96",
+            "./icons/128x128",
+            "./icons"  // For the SVG icon
+        };
+
+        foreach (string path in icon_paths) {
+            icon_theme.add_search_path(path);
+        }
     }
 
     private void load_css() {
