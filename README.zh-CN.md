@@ -1,12 +1,10 @@
 [English](./README.md) | 简体中文
 
-# LazyCat Terminal
+### LazyCat Terminal 一个支持多标签、分屏和透明背景的高性能的终端模拟器，使用 Vala 和 Gtk4 技术开发
 
 <p align="center">
   <img src="screenshot.png" alt="LazyCat Terminal">
 </p>
-
-#### 一个支持多标签、分屏和透明背景的高性能的终端模拟器，使用 Vala 和 Gtk4 技术开发
 
 - 极简设计： 无边框、Chrome 风格的多标签、透明背景都是为了尽量减少对用户注意力的干扰
 - 超强分屏： 内置分屏功能，无限分屏，Vim 风格的分屏间导航，全键盘操作，沉浸式开发

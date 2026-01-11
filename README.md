@@ -1,12 +1,10 @@
 English | [简体中文](./README.zh-CN.md)
 
-# LazyCat Terminal
+### LazyCat Terminal, A high-performance terminal emulator with multi-tab, split-pane, and transparent background support, built with Vala and GTK4
 
 <p align="center">
   <img src="screenshot.png" alt="LazyCat Terminal">
 </p>
-
-#### A high-performance terminal emulator with multi-tab, split-pane, and transparent background support, built with Vala and GTK4
 
 - Minimalist Design: Borderless, Chrome-style tabs, transparent background - all designed to minimize distraction
 - Powerful Split-Pane: Built-in split functionality, unlimited splits, Vim-style navigation between panes, full keyboard control for immersive development
