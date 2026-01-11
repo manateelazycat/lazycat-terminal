@@ -171,6 +171,11 @@ public class TerminalWindow : ShadowWindow {
         main_box.append(tab_bar);
         main_box.append(stack);
 
+        // Hide tab bar if configured
+        if (config.hide_tab_bar) {
+            tab_bar.set_visible(false);
+        }
+
         // Use ShadowWindow's set_content method
         set_content(main_box);
 
