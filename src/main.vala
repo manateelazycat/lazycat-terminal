@@ -3,6 +3,7 @@
 public class LazyCatTerminal : Gtk.Application {
     public static string[] launch_commands = {};
     public static string? working_directory = null;
+    public static bool start_maximized = false;
 
     public LazyCatTerminal() {
         Object(
@@ -38,6 +39,8 @@ public class LazyCatTerminal : Gtk.Application {
                 next_is_directory = true;
             } else if (args[i] == "--execute" || args[i] == "-e") {
                 next_is_execute = true;
+            } else if (args[i] == "--maximized" || args[i] == "-m") {
+                start_maximized = true;
             }
         }
 

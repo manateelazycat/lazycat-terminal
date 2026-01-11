@@ -38,6 +38,11 @@ public class TerminalWindow : ShadowWindow {
         add_new_tab();
         setup_snap_detection();
         setup_close_handler();
+
+        // Maximize window if configured or requested via command line
+        if (config.start_maximized || LazyCatTerminal.start_maximized) {
+            maximize();
+        }
     }
 
     private void setup_window() {
