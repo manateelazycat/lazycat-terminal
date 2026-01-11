@@ -1202,6 +1202,57 @@ public class TerminalTab : Gtk.Box {
         search_box.set_margin_end(10);
         search_box.set_size_request(150, -1);
         search_box.set_visible(false);
+        search_box.add_css_class("search-box");
+
+        // Create search icon (DrawingArea for custom drawing)
+        search_icon = new Gtk.DrawingArea();
+        search_icon.set_size_request(34, 34);  // Same height as entry (24px + 5px top + 5px bottom padding)
+        search_icon.set_valign(Gtk.Align.CENTER);
+        search_icon.set_draw_func(draw_search_icon);
+
+        // Create search entry
+        search_entry = new Gtk.Entry();
+        search_entry.set_placeholder_text("Search...");
+        search_entry.set_hexpand(true);
+        search_entry.add_css_class("search-entry");
+
+        // Setup key event handling
+        var key_controller = new Gtk.EventControllerKey();
+        key_controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);  // Capture phase to get events before window
+        key_controller.key_pressed.connect((keyval, keycode, state) => {
+            bool ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
+
+
+            if (keyval == Gdk.Key.Escape) {
+                hide_search_box();
+                return true;
+            } else if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter) {
+                string search_text = search_entry.get_text();
+                if (search_text.length > 0) {
+                    if (ctrl) {
+                        search_backward(search_text);
+                    } else {
+                        search_forward(search_text);
+                    }
+                }
+                return true;
+            }
+            return false;
+        });
+        search_entry.add_controller(key_controller);
+
+        search_box.append(search_icon);
+        search_box.append(search_entry);
+
+        // Apply initial style
+        update_search_box_style();
+    }
+
+    // Update search box style to match current theme
+    private void update_search_box_style() {
+        if (search_box == null || search_entry == null) {
+            return;
+        }
 
         // Apply CSS styling
         var css_provider = new Gtk.CssProvider();
@@ -1214,9 +1265,26 @@ public class TerminalTab : Gtk.Box {
         string border_rgba = is_color_dark(background_color) ?
             "rgba(238, 238, 238, 0.05)" : "rgba(17, 17, 17, 0.05)";
 
+        // Convert background color to RGB values
+        int bg_r = (int)(background_color.red * 255);
+        int bg_g = (int)(background_color.green * 255);
+        int bg_b = (int)(background_color.blue * 255);
+
+        // Convert foreground color to hex
+        string fg_hex = "#%02x%02x%02x".printf(
+            (int)(foreground_color.red * 255),
+            (int)(foreground_color.green * 255),
+            (int)(foreground_color.blue * 255)
+        );
+
+        // Get RGB values for selection background
+        int fg_r = (int)(foreground_color.red * 255);
+        int fg_g = (int)(foreground_color.green * 255);
+        int fg_b = (int)(foreground_color.blue * 255);
+
         string css = """
             .search-box {
-                background-color: rgba(17, 17, 17, """ + paned_opacity.to_string() + """);
+                background-color: rgba(""" + bg_r.to_string() + """, """ + bg_g.to_string() + """, """ + bg_b.to_string() + """, """ + paned_opacity.to_string() + """);
                 border: 1px solid """ + border_rgba + """;
                 border-radius: 4px;
                 padding: 0;
@@ -1225,13 +1293,13 @@ public class TerminalTab : Gtk.Box {
                 background-color: transparent;
                 background-image: none;
                 background: transparent;
-                color: #00cd00;
+                color: """ + fg_hex + """;
                 border: none;
                 border-radius: 0;
                 padding: 5px 8px 5px 1px;
                 min-height: 24px;
                 font-size: 16px;
-                caret-color: #00cd00;
+                caret-color: """ + fg_hex + """;
                 outline: none;
                 box-shadow: none;
             }
@@ -1298,8 +1366,8 @@ public class TerminalTab : Gtk.Box {
                 box-shadow: none;
             }
             .search-entry selection {
-                background-color: rgba(0, 205, 0, 0.3);
-                color: #00cd00;
+                background-color: rgba(""" + fg_r.to_string() + """, """ + fg_g.to_string() + """, """ + fg_b.to_string() + """, 0.3);
+                color: """ + fg_hex + """;
             }
         """;
         css_provider.load_from_string(css);
@@ -1308,52 +1376,16 @@ public class TerminalTab : Gtk.Box {
             css_provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         );
-        search_box.add_css_class("search-box");
-
-        // Create search icon (DrawingArea for custom drawing)
-        search_icon = new Gtk.DrawingArea();
-        search_icon.set_size_request(34, 34);  // Same height as entry (24px + 5px top + 5px bottom padding)
-        search_icon.set_valign(Gtk.Align.CENTER);
-        search_icon.set_draw_func(draw_search_icon);
-
-        // Create search entry
-        search_entry = new Gtk.Entry();
-        search_entry.set_placeholder_text("Search...");
-        search_entry.set_hexpand(true);
-        search_entry.add_css_class("search-entry");
 
         search_entry.get_style_context().add_provider(
             css_provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         );
 
-        // Setup key event handling
-        var key_controller = new Gtk.EventControllerKey();
-        key_controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);  // Capture phase to get events before window
-        key_controller.key_pressed.connect((keyval, keycode, state) => {
-            bool ctrl = (state & Gdk.ModifierType.CONTROL_MASK) != 0;
-
-
-            if (keyval == Gdk.Key.Escape) {
-                hide_search_box();
-                return true;
-            } else if (keyval == Gdk.Key.Return || keyval == Gdk.Key.KP_Enter) {
-                string search_text = search_entry.get_text();
-                if (search_text.length > 0) {
-                    if (ctrl) {
-                        search_backward(search_text);
-                    } else {
-                        search_forward(search_text);
-                    }
-                }
-                return true;
-            }
-            return false;
-        });
-        search_entry.add_controller(key_controller);
-
-        search_box.append(search_icon);
-        search_box.append(search_entry);
+        // Redraw search icon with new foreground color
+        if (search_icon != null) {
+            search_icon.queue_draw();
+        }
     }
 
     // Draw search icon (magnifying glass with handle pointing right)
@@ -1585,7 +1617,7 @@ public class TerminalTab : Gtk.Box {
             message = "Processes are running in terminals\nConfirm to terminate all?";
         }
 
-        var dialog = new ConfirmDialog(window, message, foreground_color);
+        var dialog = new ConfirmDialog(window, message, foreground_color, background_color);
         dialog.confirmed.connect(() => {
             on_confirmed();
         });
@@ -1696,6 +1728,9 @@ public class TerminalTab : Gtk.Box {
 
             // Update paned separator style to match new background
             update_paned_style();
+
+            // Update search box style to match new theme
+            update_search_box_style();
         } catch (Error e) {
             stderr.printf("Error loading theme %s: %s\n", theme_name, e.message);
         }

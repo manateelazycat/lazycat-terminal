@@ -7,6 +7,7 @@ public class ConfirmDialog : Gtk.Window {
     private Gtk.Button confirm_button;
     private Gtk.DrawingArea close_button;
     private Gdk.RGBA foreground_color;
+    private Gdk.RGBA background_color;
     private double background_opacity = 0.95;
 
     // Close button state
@@ -19,10 +20,11 @@ public class ConfirmDialog : Gtk.Window {
 
     public signal void confirmed();
 
-    public ConfirmDialog(Gtk.Window parent, string message, Gdk.RGBA fg_color) {
+    public ConfirmDialog(Gtk.Window parent, string message, Gdk.RGBA fg_color, Gdk.RGBA bg_color) {
         Object(transient_for: parent, modal: true);
 
         foreground_color = fg_color;
+        background_color = bg_color;
 
         setup_window();
         setup_layout(message);
@@ -46,6 +48,11 @@ public class ConfirmDialog : Gtk.Window {
         // Use darker background than main window
         string fg_hex = rgba_to_hex(foreground_color);
 
+        // Convert background color to RGB values
+        int bg_r = (int)(background_color.red * 255);
+        int bg_g = (int)(background_color.green * 255);
+        int bg_b = (int)(background_color.blue * 255);
+
         string css = """
             window.confirm-dialog-window {
                 background-color: transparent;
@@ -58,7 +65,7 @@ public class ConfirmDialog : Gtk.Window {
             }
 
             .confirm-dialog {
-                background-color: rgba(0, 0, 0, """ + background_opacity.to_string() + """);
+                background-color: rgba(""" + bg_r.to_string() + """, """ + bg_g.to_string() + """, """ + bg_b.to_string() + """, """ + background_opacity.to_string() + """);
                 border-radius: 8px;
                 border: 1px solid """ + fg_hex + """;
             }

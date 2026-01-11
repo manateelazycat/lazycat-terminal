@@ -826,7 +826,7 @@ public class TerminalWindow : ShadowWindow {
 
         // Create or show settings dialog
         if (settings_dialog == null) {
-            settings_dialog = new SettingsDialog(this, fg_color);
+            settings_dialog = new SettingsDialog(this, fg_color, background_color);
             settings_dialog.close_request.connect(() => {
                 settings_dialog = null;
                 return false;
