@@ -9,6 +9,7 @@ public class TerminalTab : Gtk.Box {
     private Gdk.RGBA background_color;  // Store background color for brightness detection
     private Gdk.RGBA[] color_palette;
     private Gtk.CssProvider paned_css_provider;
+    private Gtk.CssProvider? search_css_provider = null;  // Cached provider for search box
     private double current_opacity = 0.88;
     private HashTable<Vte.Terminal, string> terminal_titles;  // Store title for each terminal
     private HashTable<Vte.Terminal, int> terminal_pids;  // Store child pid for each terminal
@@ -147,7 +148,7 @@ public class TerminalTab : Gtk.Box {
         var terminal = new Vte.Terminal();
 
         // Terminal appearance
-        terminal.set_scrollback_lines(10000);
+        terminal.set_scrollback_lines(2000);
         terminal.set_scroll_on_output(false);
         terminal.set_scroll_on_keystroke(true);
 
@@ -1528,8 +1529,12 @@ public class TerminalTab : Gtk.Box {
             return;
         }
 
-        // Apply CSS styling
-        var css_provider = new Gtk.CssProvider();
+        // Create CSS provider only once, reuse it for updates
+        bool first_time = (search_css_provider == null);
+        if (first_time) {
+            search_css_provider = new Gtk.CssProvider();
+        }
+
         double paned_opacity = double.max(0.6, double.min(1.0, current_opacity + 0.3));
 
         // Calculate RGBA values for separator color with 0.05 opacity
@@ -1641,14 +1646,16 @@ public class TerminalTab : Gtk.Box {
                 color: """ + fg_hex + """;
             }
         """;
-        css_provider.load_from_string(css);
+        search_css_provider.load_from_string(css);
 
-        // Add provider to global display (CSS classes already applied during creation)
-        StyleHelper.add_provider_for_display(
-            Gdk.Display.get_default(),
-            css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        );
+        // Add provider to global display only on first creation
+        if (first_time) {
+            StyleHelper.add_provider_for_display(
+                Gdk.Display.get_default(),
+                search_css_provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            );
+        }
 
         // Redraw search icon with new foreground color
         if (search_icon != null) {

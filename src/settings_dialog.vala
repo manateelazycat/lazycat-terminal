@@ -7,6 +7,7 @@ public class SettingsDialog : Gtk.Window {
     private Gdk.RGBA foreground_color;
     private Gdk.RGBA background_color;
     private double background_opacity = 0.95;
+    private Gtk.CssProvider? css_provider = null;  // Cached provider to avoid leaks
 
     // Close button state
     private bool close_button_hover = false;
@@ -110,7 +111,11 @@ public class SettingsDialog : Gtk.Window {
     }
 
     private void load_css() {
-        var css_provider = new Gtk.CssProvider();
+        // Create CSS provider only once, reuse it for updates
+        bool first_time = (css_provider == null);
+        if (first_time) {
+            css_provider = new Gtk.CssProvider();
+        }
 
         string fg_hex = rgba_to_hex(foreground_color);
 
@@ -140,11 +145,14 @@ public class SettingsDialog : Gtk.Window {
 
         css_provider.load_from_string(css);
 
-        StyleHelper.add_provider_for_display(
-            Gdk.Display.get_default(),
-            css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        );
+        // Add provider to global display only on first creation
+        if (first_time) {
+            StyleHelper.add_provider_for_display(
+                Gdk.Display.get_default(),
+                css_provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            );
+        }
     }
 
     private string rgba_to_hex(Gdk.RGBA color) {
