@@ -168,6 +168,8 @@ public class ConfigManager {
     // Update hide_tab_bar setting and save to config file
     public void update_hide_tab_bar(bool new_hide_tab_bar) {
         hide_tab_bar = new_hide_tab_bar;
+    }
+
     // Update start_maximized setting and save to config file
     public void update_start_maximized(bool new_start_maximized) {
         start_maximized = new_start_maximized;
