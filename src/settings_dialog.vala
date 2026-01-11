@@ -395,16 +395,7 @@ private abstract class SettingsListWidget : Gtk.DrawingArea {
     }
 
     protected void draw_border(Cairo.Context cr, int width, int height) {
-        // Draw rounded border
-        cr.set_source_rgba(
-            foreground_color.red,
-            foreground_color.green,
-            foreground_color.blue,
-            is_focused ? 1.0 : 0.5
-        );
-        cr.set_line_width(is_focused ? 2.0 : 1.0);
-
-        // Draw rounded rectangle border
+        // First, fill the rounded rectangle with semi-transparent black background
         double radius = 5.0;
         double line_width = is_focused ? 2.0 : 1.0;
         double x = line_width / 2.0;
@@ -412,12 +403,26 @@ private abstract class SettingsListWidget : Gtk.DrawingArea {
         double w = width - line_width;
         double h = height - line_width;
 
+        // Draw and fill rounded rectangle background
         cr.new_sub_path();
         cr.arc(x + radius, y + radius, radius, Math.PI, 3 * Math.PI / 2);
         cr.arc(x + w - radius, y + radius, radius, 3 * Math.PI / 2, 0);
         cr.arc(x + w - radius, y + h - radius, radius, 0, Math.PI / 2);
         cr.arc(x + radius, y + h - radius, radius, Math.PI / 2, Math.PI);
         cr.close_path();
+
+        // Fill with semi-transparent black
+        cr.set_source_rgba(0, 0, 0, 0.3);
+        cr.fill_preserve();
+
+        // Draw border
+        cr.set_source_rgba(
+            foreground_color.red,
+            foreground_color.green,
+            foreground_color.blue,
+            is_focused ? 1.0 : 0.5
+        );
+        cr.set_line_width(line_width);
         cr.stroke();
     }
 
@@ -498,11 +503,13 @@ private class FontListWidget : SettingsListWidget {
     }
 
     protected override void draw_list(Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
-        // Clear background
-        cr.set_source_rgba(0, 0, 0, 0.3);
+        // Clear background to transparent
+        cr.set_source_rgba(0, 0, 0, 0);
+        cr.set_operator(Cairo.Operator.SOURCE);
         cr.paint();
+        cr.set_operator(Cairo.Operator.OVER);
 
-        // Draw border
+        // Draw border (which also fills the background)
         draw_border(cr, width, height);
 
         // Calculate visible range
@@ -551,11 +558,13 @@ private class FontSizeListWidget : SettingsListWidget {
     }
 
     protected override void draw_list(Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
-        // Clear background
-        cr.set_source_rgba(0, 0, 0, 0.3);
+        // Clear background to transparent
+        cr.set_source_rgba(0, 0, 0, 0);
+        cr.set_operator(Cairo.Operator.SOURCE);
         cr.paint();
+        cr.set_operator(Cairo.Operator.OVER);
 
-        // Draw border
+        // Draw border (which also fills the background)
         draw_border(cr, width, height);
 
         // Calculate visible range
@@ -732,11 +741,13 @@ private class ThemeListWidget : SettingsListWidget {
     }
 
     protected override void draw_list(Gtk.DrawingArea area, Cairo.Context cr, int width, int height) {
-        // Clear background
-        cr.set_source_rgba(0, 0, 0, 0.3);
+        // Clear background to transparent
+        cr.set_source_rgba(0, 0, 0, 0);
+        cr.set_operator(Cairo.Operator.SOURCE);
         cr.paint();
+        cr.set_operator(Cairo.Operator.OVER);
 
-        // Draw border
+        // Draw border (which also fills the background)
         draw_border(cr, width, height);
 
         // Calculate visible range
