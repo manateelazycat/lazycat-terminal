@@ -160,6 +160,7 @@ public class TerminalWindow : ShadowWindow {
         tab_bar.tab_selected.connect(on_tab_selected);
         tab_bar.tab_closed.connect(on_tab_closed);
         tab_bar.new_tab_requested.connect(add_new_tab);
+        tab_bar.settings_button_clicked.connect(show_settings_dialog);
 
         // Create stack for terminal tabs
         stack = new Gtk.Stack();
