@@ -8,6 +8,8 @@ public class TabBar : Gtk.DrawingArea {
     private int pressed_control = -1;
     private bool hover_new_tab = false;
     private bool pressed_new_tab = false;
+    private bool hover_settings_btn = false;
+    private bool pressed_settings_btn = false;
     private double background_opacity = 0.93;  // Default opacity for tab bar
 
     // Tab close button state
@@ -54,6 +56,7 @@ public class TabBar : Gtk.DrawingArea {
     public signal void tab_selected(int index);
     public signal void tab_closed(int index);
     public signal void new_tab_requested();
+    public signal void settings_button_clicked();
 
     private class TabInfo {
         public string title;
@@ -145,6 +148,9 @@ public class TabBar : Gtk.DrawingArea {
 
         // Draw new tab button
         draw_new_tab_button(cr, width, height);
+
+        // Draw settings button
+        draw_settings_button(cr, width, height);
 
         // Draw window controls (minimize, maximize, close)
         draw_window_controls(cr, width, height);
@@ -357,6 +363,46 @@ public class TabBar : Gtk.DrawingArea {
         cr.stroke();
     }
 
+    private void draw_settings_button(Cairo.Context cr, int width, int height) {
+        // Position in top-right corner, before window controls
+        double margin_right = CTRL_BTN_AREA_WIDTH + 10;
+        double btn_x = width - margin_right - NEW_TAB_BTN_SIZE;
+        double btn_y = (height - NEW_TAB_BTN_SIZE) / 2;
+        double center_x = btn_x + NEW_TAB_BTN_SIZE / 2;
+        double center_y = btn_y + NEW_TAB_BTN_SIZE / 2;
+
+        // Determine color based on hover/pressed state
+        double alpha = 0.6;  // Default: subtle
+        if (pressed_settings_btn) {
+            alpha = 1.0;  // Pressed: full brightness
+        } else if (hover_settings_btn) {
+            alpha = 0.85;  // Hover: brighter
+        }
+        cr.set_source_rgba(0.7, 0.7, 0.7, alpha);
+
+        // Draw hamburger menu icon (three horizontal lines)
+        cr.set_line_width(1.5);
+        cr.set_line_cap(Cairo.LineCap.ROUND);
+
+        double line_width = 12;
+        double line_spacing = 4;
+
+        // Top line
+        cr.move_to(center_x - line_width / 2, center_y - line_spacing);
+        cr.line_to(center_x + line_width / 2, center_y - line_spacing);
+        cr.stroke();
+
+        // Middle line
+        cr.move_to(center_x - line_width / 2, center_y);
+        cr.line_to(center_x + line_width / 2, center_y);
+        cr.stroke();
+
+        // Bottom line
+        cr.move_to(center_x - line_width / 2, center_y + line_spacing);
+        cr.line_to(center_x + line_width / 2, center_y + line_spacing);
+        cr.stroke();
+    }
+
     private void draw_window_controls(Cairo.Context cr, int width, int height) {
         double btn_size = CTRL_BTN_SIZE;
         double spacing = CTRL_BTN_SPACING;
@@ -454,15 +500,24 @@ public class TabBar : Gtk.DrawingArea {
         return last.x + last.width - TAB_OVERLAP + 8 + NEW_TAB_BTN_MARGIN_LEFT;
     }
 
+    private double get_settings_button_x() {
+        // Position in top-right corner, before window controls
+        int width = get_width();
+        double margin_right = CTRL_BTN_AREA_WIDTH + 10;
+        return width - margin_right - NEW_TAB_BTN_SIZE;
+    }
+
     private void on_motion(double x, double y) {
         int old_hover = hover_index;
         int old_hover_control = hover_control;
         bool old_hover_new_tab = hover_new_tab;
+        bool old_hover_settings = hover_settings_btn;
         int old_hover_close = hover_close_index;
 
         hover_index = -1;
         hover_control = -1;
         hover_new_tab = false;
+        hover_settings_btn = false;
         hover_close_index = -1;
 
         // Check window control buttons first
@@ -492,8 +547,20 @@ public class TabBar : Gtk.DrawingArea {
             }
         }
 
-        // Check tabs (only if not hovering other controls)
+        // Check settings button (only if not hovering control buttons or new tab button)
         if (hover_control < 0 && !hover_new_tab) {
+            double settings_x = get_settings_button_x();
+            double settings_y = (get_height() - NEW_TAB_BTN_SIZE) / 2;
+            double settings_hit_radius = NEW_TAB_BTN_SIZE / 2 + 3;
+
+            if (Math.fabs(x - (settings_x + NEW_TAB_BTN_SIZE / 2)) <= settings_hit_radius &&
+                Math.fabs(y - (settings_y + NEW_TAB_BTN_SIZE / 2)) <= settings_hit_radius) {
+                hover_settings_btn = true;
+            }
+        }
+
+        // Check tabs (only if not hovering other controls)
+        if (hover_control < 0 && !hover_new_tab && !hover_settings_btn) {
             for (int i = 0; i < tab_infos.length(); i++) {
                 var info = tab_infos.nth_data((uint)i);
                 if (x >= info.x && x <= info.x + info.width && y <= TAB_HEIGHT + 4) {
@@ -517,16 +584,19 @@ public class TabBar : Gtk.DrawingArea {
         }
 
         if (old_hover != hover_index || old_hover_control != hover_control ||
-            old_hover_new_tab != hover_new_tab || old_hover_close != hover_close_index) {
+            old_hover_new_tab != hover_new_tab || old_hover_settings != hover_settings_btn ||
+            old_hover_close != hover_close_index) {
             queue_draw();
         }
     }
 
     private void on_leave() {
-        bool need_redraw = hover_index != -1 || hover_control != -1 || hover_new_tab || hover_close_index != -1;
+        bool need_redraw = hover_index != -1 || hover_control != -1 || hover_new_tab ||
+                          hover_settings_btn || hover_close_index != -1;
         hover_index = -1;
         hover_control = -1;
         hover_new_tab = false;
+        hover_settings_btn = false;
         hover_close_index = -1;
         if (need_redraw) {
             queue_draw();
@@ -569,8 +639,21 @@ public class TabBar : Gtk.DrawingArea {
             return;
         }
 
+        // Check settings button - set pressed state
+        double settings_x = get_settings_button_x();
+        double settings_y = (get_height() - NEW_TAB_BTN_SIZE) / 2;
+        double settings_hit_radius = NEW_TAB_BTN_SIZE / 2 + 3;
+
+        if (Math.fabs(x - (settings_x + NEW_TAB_BTN_SIZE / 2)) <= settings_hit_radius &&
+            Math.fabs(y - (settings_y + NEW_TAB_BTN_SIZE / 2)) <= settings_hit_radius) {
+            pressed_settings_btn = true;
+            queue_draw();
+            return;
+        }
+
         pressed_control = -1;
         pressed_new_tab = false;
+        pressed_settings_btn = false;
         pressed_close_index = -1;
     }
 
@@ -591,7 +674,24 @@ public class TabBar : Gtk.DrawingArea {
             return;
         }
 
+        // Check settings button - execute action if released on same button
+        double settings_x = get_settings_button_x();
+        double settings_y = (get_height() - NEW_TAB_BTN_SIZE) / 2;
+        double settings_hit_radius = NEW_TAB_BTN_SIZE / 2 + 3;
+
+        if (Math.fabs(x - (settings_x + NEW_TAB_BTN_SIZE / 2)) <= settings_hit_radius &&
+            Math.fabs(y - (settings_y + NEW_TAB_BTN_SIZE / 2)) <= settings_hit_radius) {
+            // Only trigger if released on the same button that was pressed
+            if (pressed_settings_btn) {
+                settings_button_clicked();
+            }
+            pressed_settings_btn = false;
+            queue_draw();
+            return;
+        }
+
         pressed_new_tab = false;
+        pressed_settings_btn = false;
 
         // Check tab close button - execute action if released on same button
         if (pressed_close_index >= 0 && hover_close_index == pressed_close_index) {
