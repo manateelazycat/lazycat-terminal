@@ -617,7 +617,20 @@ public class TerminalWindow : ShadowWindow {
     public void add_new_tab() {
         tab_counter++;
         bool is_first_tab = (tab_counter == 1);
-        var tab = new TerminalTab("Terminal " + tab_counter.to_string(), is_first_tab);
+
+        // Get working directory from current active tab
+        string? working_directory = null;
+        if (tabs.length() > 0) {
+            int active_index = tab_bar.get_active_index();
+            if (active_index >= 0 && active_index < tabs.length()) {
+                var current_tab = tabs.nth_data((uint)active_index);
+                if (current_tab != null) {
+                    working_directory = current_tab.get_current_working_directory();
+                }
+            }
+        }
+
+        var tab = new TerminalTab("Terminal " + tab_counter.to_string(), is_first_tab, working_directory);
 
         // Set initial background opacity
         tab.set_background_opacity(background_opacity);

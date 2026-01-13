@@ -21,6 +21,7 @@ public class TerminalTab : Gtk.Box {
     private bool child_has_exit = false;
     private bool has_print_exit_notify = false;
     private bool _is_first_tab = false;
+    private string? initial_working_directory = null;
 
     public bool is_first_tab {
         get { return _is_first_tab; }
@@ -47,10 +48,11 @@ public class TerminalTab : Gtk.Box {
     public signal void close_requested();
     public signal void background_activity();  // Signal when background terminal has activity
 
-    public TerminalTab(string title, bool first_tab = false) {
+    public TerminalTab(string title, bool first_tab = false, string? working_directory = null) {
         Object(orientation: Gtk.Orientation.VERTICAL, spacing: 0);
         tab_title = title;
         is_first_tab = first_tab;
+        initial_working_directory = working_directory;
 
         // Initialize shell/command after construct block
         GLib.Idle.add(() => {
@@ -68,8 +70,8 @@ public class TerminalTab : Gtk.Box {
         if (is_launch_command() && is_first_tab) {
             launch_command(focused_terminal, LazyCatTerminal.working_directory);
         } else {
-            // Spawn shell in current directory
-            spawn_shell_in_terminal(focused_terminal, null);
+            // Spawn shell in provided working directory or current directory
+            spawn_shell_in_terminal(focused_terminal, initial_working_directory);
         }
     }
 
@@ -818,7 +820,7 @@ public class TerminalTab : Gtk.Box {
     }
 
     // Get current working directory from focused terminal
-    private string? get_current_working_directory() {
+    public string? get_current_working_directory() {
         if (focused_terminal == null) {
             return null;
         }
