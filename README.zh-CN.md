@@ -95,6 +95,8 @@ lazycat-terminal [选项]
 
 配置文件位于 `~/.config/lazycat-terminal/config.conf`。首次启动时会自动从默认配置创建。
 
+注：配置文件中按键的名称来自于 [gdkkeysyms.h](https://gitlab.gnome.org/GNOME/gtk/-/blob/main/gdk/gdkkeysyms.h)。例如 `=` 写为 `equal`；`-` 写为 `minus`；`主键盘区回车` 写为 `Return`；`数字键盘区回车` 写为 `Kp_Enter`。
+
 #### 通用设置
 
 | 选项 | 类型 | 默认值 | 说明 |

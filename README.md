@@ -24,6 +24,8 @@ yay -S lazycat-terminal
 
 All keyboard shortcuts can be customized in `~/.config/lazycat-terminal/config.conf`.
 
+Note: The key names in the configuration file are taken from [gdkkeysyms.h](https://gitlab.gnome.org/GNOME/gtk/-/blob/main/gdk/gdkkeysyms.h). For example, `=` is written as `equal`; `-` is written as `minus`; `Enter` on the main keyboard is written as `Return`; and `Enter` on the numeric keypad is written as `Kp_Enter`.
+
 #### Basic Operations
 
 | Shortcut | Function |
