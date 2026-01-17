@@ -159,18 +159,16 @@ public class TabBar : Gtk.DrawingArea {
     }
 
     private int calculate_tab_width_for_text(string text) {
-        // Create a temporary Cairo surface to measure text
-        var surface = new Cairo.ImageSurface(Cairo.Format.ARGB32, 1, 1);
-        var cr = new Cairo.Context(surface);
+        // Use Pango to measure text (supports emoji and complex scripts)
+        var layout = create_pango_layout(text);
+        var font_desc = Pango.FontDescription.from_string("Sans 11");
+        layout.set_font_description(font_desc);
 
-        cr.select_font_face("Sans", Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
-        cr.set_font_size(15);
-
-        Cairo.TextExtents extents;
-        cr.text_extents(text, out extents);
+        int text_width, text_height;
+        layout.get_pixel_size(out text_width, out text_height);
 
         // Width = text width + 40px (20px padding on each side)
-        int calculated_width = (int)extents.width + 40;
+        int calculated_width = text_width + 40;
 
         // Cap at maximum width (doubled: 400px)
         int max_width = TAB_MAX_WIDTH * 2;
@@ -265,27 +263,23 @@ public class TabBar : Gtk.DrawingArea {
     }
 
     private void draw_tab_title(Cairo.Context cr, TabInfo info, double x, double y, double w, double h, bool is_active) {
-        cr.select_font_face("Sans", Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
-        cr.set_font_size(15);
+        // Use Pango for text rendering (supports emoji and complex scripts with font fallback)
+        var layout = create_pango_layout(info.title);
+        var font_desc = Pango.FontDescription.from_string("Sans 11");
+        layout.set_font_description(font_desc);
 
         // Truncate title if needed
         // Text area: tab width - 40px (20px padding on each side)
-        string title = info.title;
         double max_text_width = w - 40;
+        layout.set_width((int)(max_text_width * Pango.SCALE));
+        layout.set_ellipsize(Pango.EllipsizeMode.END);
 
-        Cairo.TextExtents extents;
-        cr.text_extents(title, out extents);
-
-        if (extents.width > max_text_width) {
-            while (title.length > 3 && extents.width > max_text_width) {
-                title = title.substring(0, title.length - 4) + "...";
-                cr.text_extents(title, out extents);
-            }
-        }
+        int text_width, text_height;
+        layout.get_pixel_size(out text_width, out text_height);
 
         // Center text horizontally in tab
-        double text_x = x + (w - extents.width) / 2;
-        double text_y = y + h / 2 + extents.height / 2 - 2;
+        double text_x = x + (w - text_width) / 2;
+        double text_y = y + (h - text_height) / 2;
 
         // Choose color based on state
         if (is_active) {
@@ -297,7 +291,7 @@ public class TabBar : Gtk.DrawingArea {
         }
 
         cr.move_to(text_x, text_y);
-        cr.show_text(title);
+        Pango.cairo_show_layout(cr, layout);
     }
 
     private void draw_tab_close_button(Cairo.Context cr, int index, double tab_x, double tab_y, double tab_w, double tab_h) {
