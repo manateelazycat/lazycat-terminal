@@ -538,6 +538,11 @@ public class SettingsDialog : Gtk.Widget {
         if (transparency_slider != null) {
             transparency_slider.update_foreground_color(new_fg_color);
         }
+
+        // Redraw close button with new foreground color
+        if (close_button != null) {
+            close_button.queue_draw();
+        }
     }
 
     protected override void dispose() {

@@ -9,6 +9,7 @@ public class TerminalWindow : ShadowWindow {
     private Gtk.Box main_box;
     private double background_opacity = 0.88;
     private Gdk.RGBA background_color;  // Store background color from theme
+    private Gdk.RGBA tab_color;  // Store tab color from theme for scrollbar styling
     private Gtk.CssProvider css_provider;
     private SettingsDialog? settings_dialog = null;
     private ConfirmDialog? confirm_dialog = null;
@@ -30,6 +31,10 @@ public class TerminalWindow : ShadowWindow {
         // Initialize default background color (black)
         background_color = Gdk.RGBA();
         background_color.parse("#000000");
+
+        // Initialize default tab color (blue)
+        tab_color = Gdk.RGBA();
+        tab_color.parse("#2CA7F8");
 
         // Load theme colors from config
         load_theme_colors(config.theme);
@@ -95,6 +100,11 @@ public class TerminalWindow : ShadowWindow {
         int g = (int)(background_color.green * 255);
         int b = (int)(background_color.blue * 255);
 
+        // Convert tab color to RGB values (0-255) for scrollbar styling
+        int tr = (int)(tab_color.red * 255);
+        int tg = (int)(tab_color.green * 255);
+        int tb = (int)(tab_color.blue * 255);
+
         string css = """
             .transparent-window {
                 background-color: rgba(""" + r.to_string() + """, """ + g.to_string() + """, """ + b.to_string() + """, """ + background_opacity.to_string() + """);
@@ -125,6 +135,9 @@ public class TerminalWindow : ShadowWindow {
             }
             .transparent-tab {
                 background-color: transparent;
+            }
+            scrollbar slider:active {
+                background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0.9);
             }
         """;
         css_provider.load_from_string(css);
@@ -1004,12 +1017,11 @@ public class TerminalWindow : ShadowWindow {
             // Load and store active tab color for later use
             if (key_file.has_key("theme", "tab")) {
                 string tab_str = key_file.get_string("theme", "tab").strip();
-                Gdk.RGBA tab_color = Gdk.RGBA();
-                tab_color.parse(tab_str);
+                this.tab_color.parse(tab_str);
 
                 // If tab_bar exists, update it; otherwise it will be set during setup_layout
                 if (tab_bar != null) {
-                    tab_bar.set_active_tab_color(tab_color);
+                    tab_bar.set_active_tab_color(this.tab_color);
                     tab_bar.set_background_color(background_color);
                 }
             }
