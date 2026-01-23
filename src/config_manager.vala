@@ -9,6 +9,7 @@ public class ConfigManager {
     public double opacity { get; private set; }
     public string font { get; private set; }
     public int font_size { get; private set; }
+    public double line_height { get; private set; }
     public bool hide_tab_bar { get; private set; }
     public bool start_maximized { get; private set; }
 
@@ -92,6 +93,15 @@ public class ConfigManager {
                 opacity = config_file.get_double("general", "opacity");
                 font = config_file.get_string("general", "font");
                 font_size = config_file.get_integer("general", "font_size");
+                // Load line_height with default 1.0 if not present
+                try {
+                    line_height = config_file.get_double("general", "line_height");
+                    // Clamp to valid range 1.0-2.0
+                    if (line_height < 1.0) line_height = 1.0;
+                    if (line_height > 2.0) line_height = 2.0;
+                } catch (KeyFileError e) {
+                    line_height = 1.0;
+                }
                 // Load hide_tab_bar with default false if not present
                 try {
                     hide_tab_bar = config_file.get_boolean("general", "hide_tab_bar");
@@ -111,6 +121,7 @@ public class ConfigManager {
                 opacity = 0.88;
                 font = "Hack";
                 font_size = 13;
+                line_height = 1.0;
                 hide_tab_bar = false;
                 start_maximized = false;
             }
@@ -130,6 +141,7 @@ public class ConfigManager {
             opacity = 0.88;
             font = "Hack";
             font_size = 13;
+            line_height = 1.0;
             hide_tab_bar = false;
             start_maximized = false;
         }
@@ -185,6 +197,7 @@ public class ConfigManager {
             config_file.set_string("general", "opacity", "%.2f".printf(opacity));
             config_file.set_string("general", "font", font);
             config_file.set_integer("general", "font_size", font_size);
+            config_file.set_string("general", "line_height", "%.2f".printf(line_height));
             config_file.set_boolean("general", "hide_tab_bar", hide_tab_bar);
             config_file.set_boolean("general", "start_maximized", start_maximized);
 

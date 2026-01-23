@@ -43,6 +43,7 @@ public class TerminalTab : Gtk.Box {
     private const int MAX_FONT_SIZE = 48;
     private int current_font_size = DEFAULT_FONT_SIZE;
     private int initial_font_size = DEFAULT_FONT_SIZE;  // Store the configured default
+    private double line_height = 1.0;  // Line height scale (1.0-2.0)
 
     public signal void title_changed(string title);
     public signal void close_requested();
@@ -196,6 +197,7 @@ public class TerminalTab : Gtk.Box {
         string mono_font = get_mono_font();
         var font = Pango.FontDescription.from_string(mono_font + " " + current_font_size.to_string());
         terminal.set_font(font);
+        terminal.set_cell_height_scale(line_height);
 
         terminal.set_vexpand(true);
         terminal.set_hexpand(true);
@@ -1972,6 +1974,16 @@ public class TerminalTab : Gtk.Box {
         current_font_size = font_size;
         initial_font_size = font_size;  // Also update the initial size
         update_font();
+    }
+
+    // Set line height scale for all terminals in this tab
+    public void set_line_height(double scale) {
+        line_height = scale;
+        if (root_widget != null) {
+            foreach_terminal(root_widget, (terminal) => {
+                terminal.set_cell_height_scale(scale);
+            });
+        }
     }
 
     // Apply theme to all terminals in this tab

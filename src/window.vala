@@ -654,6 +654,7 @@ public class TerminalWindow : ShadowWindow {
         // Apply font settings from config
         tab.set_font_name(config.font);
         tab.set_font_size(config.font_size);
+        tab.set_line_height(config.line_height);
 
         // Initially not active (will be set active below)
         tab.is_active_tab = false;
