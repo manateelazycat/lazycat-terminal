@@ -72,6 +72,20 @@ All keyboard shortcuts can be customized in `~/.config/lazycat-terminal/config.c
 | `Ctrl+Enter` | Search previous match |
 | `Escape` | Close search box |
 
+#### Settings Interface Operations
+
+| Shortcut | Function |
+|--------|------|
+| `Tab` | Switch to the next sub-setting |
+| `Shift+Tab` | Switch to the previous sub-setting |
+| `Down` or `j` | Select the next item in the current sub-setting |
+| `Up` or `k` | Select the previous item in the current sub-setting |
+| `Left` or `h` | Move the slider to the left |
+| `Right` or `l` | Move the slider to the right |
+| `Return` or `Enter` | Save settings |
+
+Note: `Return` refers to the Enter key on the main keyboard; `Enter` refers to the Enter key on the numeric keypad.
+
 #### Other
 
 | Shortcut | Function |
