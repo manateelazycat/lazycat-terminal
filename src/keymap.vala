@@ -97,6 +97,74 @@ namespace Keymap {
             return "Tab";
         }
 
+        // Map symbol key names to their actual symbols for intuitive config
+        switch (keyname) {
+            case "equal":
+                return "=";
+            case "minus":
+                return "-";
+            case "plus":
+                return "+";
+            case "underscore":
+                return "_";
+            case "bracketleft":
+                return "[";
+            case "bracketright":
+                return "]";
+            case "braceleft":
+                return "{";
+            case "braceright":
+                return "}";
+            case "semicolon":
+                return ";";
+            case "colon":
+                return ":";
+            case "apostrophe":
+                return "'";
+            case "quotedbl":
+                return "\"";
+            case "comma":
+                return ",";
+            case "period":
+                return ".";
+            case "slash":
+                return "/";
+            case "backslash":
+                return "\\";
+            case "grave":
+                return "`";
+            case "asciitilde":
+                return "~";
+            case "exclam":
+                return "!";
+            case "at":
+                return "@";
+            case "numbersign":
+                return "#";
+            case "dollar":
+                return "$";
+            case "percent":
+                return "%";
+            case "asciicircum":
+                return "^";
+            case "ampersand":
+                return "&";
+            case "asterisk":
+                return "*";
+            case "parenleft":
+                return "(";
+            case "parenright":
+                return ")";
+            case "less":
+                return "<";
+            case "greater":
+                return ">";
+            case "question":
+                return "?";
+            case "bar":
+                return "|";
+        }
+
         // For single character keys (usually letters), convert to lowercase
         // This handles both 'a' and 'A' -> 'a'
         if (keyname.length == 1) {
