@@ -28,6 +28,7 @@ public class ShadowWindow : Gtk.ApplicationWindow {
     private int window_height = 0;
     private uint position_check_source_id = 0;
     private bool initial_check_done = false;
+    private uint input_region_update_source_id = 0;
 
     // Monitor info for snap detection
     private int monitor_width = 1920;
@@ -283,12 +284,27 @@ public class ShadowWindow : Gtk.ApplicationWindow {
 
     private void on_surface_state_changed() {
         update_snap_position();
-        update_input_region_for_current_state();
+        schedule_input_region_update();
     }
 
     private void on_surface_size_changed() {
         update_snap_position();
-        update_input_region_for_current_state();
+        schedule_input_region_update();
+    }
+
+    private void schedule_input_region_update() {
+        // Cancel any pending update
+        if (input_region_update_source_id != 0) {
+            Source.remove(input_region_update_source_id);
+            input_region_update_source_id = 0;
+        }
+
+        // Schedule update in idle to ensure window geometry is fully updated
+        input_region_update_source_id = GLib.Idle.add(() => {
+            input_region_update_source_id = 0;
+            update_input_region_for_current_state();
+            return false;
+        });
     }
 
     private void update_input_region_for_current_state() {
@@ -379,7 +395,7 @@ public class ShadowWindow : Gtk.ApplicationWindow {
             update_snap_position();
             update_content_margins();
             update_shadow_classes();
-            update_input_region_for_current_state();
+            schedule_input_region_update();
         });
 
         // Track size changes with debounce
@@ -477,7 +493,7 @@ public class ShadowWindow : Gtk.ApplicationWindow {
             snap_position = new_position;
             update_content_margins();
             update_shadow_classes();
-            update_input_region_for_current_state();
+            schedule_input_region_update();
         }
     }
 
@@ -486,7 +502,7 @@ public class ShadowWindow : Gtk.ApplicationWindow {
             snap_position = position;
             update_content_margins();
             update_shadow_classes();
-            update_input_region_for_current_state();
+            schedule_input_region_update();
         }
     }
 
