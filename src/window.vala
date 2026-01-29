@@ -50,6 +50,20 @@ public class TerminalWindow : ShadowWindow {
         if (config.start_maximized || LazyCatTerminal.start_maximized) {
             maximize();
         }
+
+        // Fullscreen window if configured
+        if (config.start_fullscreen) {
+            fullscreen();
+        }
+    }
+
+    // Toggle fullscreen mode
+    public void toggle_fullscreen() {
+        if (is_fullscreen()) {
+            unfullscreen();
+        } else {
+            fullscreen();
+        }
     }
 
     private void setup_window() {
@@ -537,6 +551,13 @@ public class TerminalWindow : ShadowWindow {
                     var tab = tabs.nth_data((uint)tab_bar.get_active_index());
                     if (tab != null) tab.close_other_terminals();
                 }
+                return true;
+            }
+
+            // Fullscreen toggle
+            string? fullscreen_shortcut = config.get_shortcut("fullscreen");
+            if (fullscreen_shortcut != null && key_name == fullscreen_shortcut) {
+                toggle_fullscreen();
                 return true;
             }
 

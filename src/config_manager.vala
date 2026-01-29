@@ -12,6 +12,7 @@ public class ConfigManager {
     public double line_height { get; private set; }
     public bool hide_tab_bar { get; private set; }
     public bool start_maximized { get; private set; }
+    public bool start_fullscreen { get; private set; }
 
     // Shortcut mappings
     private HashTable<string, string> shortcuts;
@@ -115,6 +116,13 @@ public class ConfigManager {
                 } catch (KeyFileError e) {
                     start_maximized = false;
                 }
+
+                // Load start_fullscreen with default false if not present
+                try {
+                    start_fullscreen = config_file.get_boolean("general", "start_fullscreen");
+                } catch (KeyFileError e) {
+                    start_fullscreen = false;
+                }
             } else {
                 // Set defaults if general section is missing
                 theme = "default";
@@ -124,6 +132,7 @@ public class ConfigManager {
                 line_height = 1.0;
                 hide_tab_bar = false;
                 start_maximized = false;
+                start_fullscreen = false;
             }
 
             // Load shortcuts
@@ -144,6 +153,7 @@ public class ConfigManager {
             line_height = 1.0;
             hide_tab_bar = false;
             start_maximized = false;
+            start_fullscreen = false;
         }
     }
 
@@ -200,6 +210,7 @@ public class ConfigManager {
             config_file.set_string("general", "line_height", "%.2f".printf(line_height));
             config_file.set_boolean("general", "hide_tab_bar", hide_tab_bar);
             config_file.set_boolean("general", "start_maximized", start_maximized);
+            config_file.set_boolean("general", "start_fullscreen", start_fullscreen);
 
             // Save to file
             string data = config_file.to_data();

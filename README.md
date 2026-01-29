@@ -90,6 +90,7 @@ Note: `Return` refers to the Enter key on the main keyboard; `Enter` refers to t
 
 | Shortcut | Function |
 |--------|------|
+| `F11` | Toggle fullscreen mode |
 | `Ctrl+Scroll` | Adjust window transparency |
 | `Ctrl+Shift+E` | Open settings dialog |
 | `Ctrl+Click link` | Open URL in browser |
@@ -119,6 +120,7 @@ The configuration file is located at `~/.config/lazycat-terminal/config.conf`. O
 | `font_size` | integer | `13` | Terminal font size in pixel |
 | `hide_tab_bar` | boolean | `false` | Hide the tab bar. Useful when using single tab or external window managers |
 | `start_maximized` | boolean | `false` | Start terminal in maximized window state |
+| `start_fullscreen` | boolean | `false` | Start terminal in fullscreen mode (hides taskbar and system tray) |
 
 #### Keyboard Shortcuts
 
@@ -164,8 +166,10 @@ font=JetBrains Mono
 font_size=14
 hide_tab_bar=false
 start_maximized=false
+start_fullscreen=false
 
 [shortcut]
+fullscreen=F11
 copy=Ctrl + Shift + c
 paste=Ctrl + Shift + v
 search=Ctrl + Shift + f

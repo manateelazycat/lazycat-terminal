@@ -90,6 +90,7 @@ yay -S lazycat-terminal
 
 | 快捷键 | 功能 |
 |--------|------|
+| `F11` | 切换全屏模式 |
 | `Ctrl+滚轮` | 调节窗口透明度 |
 | `Ctrl+Shift+E` | 打开设置对话框 |
 | `Ctrl+点击链接` | 在浏览器中打开 URL |
@@ -119,6 +120,7 @@ lazycat-terminal [选项]
 | `font_size` | 整数 | `13` | 终端字体大小 |
 | `hide_tab_bar` | 布尔值 | `false` | 隐藏标签栏。适合单标签使用或外部窗口管理器场景 |
 | `start_maximized` | 布尔值 | `false` | 启动时窗口最大化 |
+| `start_fullscreen` | 布尔值 | `false` | 启动时进入全屏模式（隐藏任务栏和系统托盘） |
 
 #### 键盘快捷键
 
@@ -164,8 +166,10 @@ font=JetBrains Mono
 font_size=14
 hide_tab_bar=false
 start_maximized=false
+start_fullscreen=false
 
 [shortcut]
+fullscreen=F11
 copy=Ctrl + Shift + c
 paste=Ctrl + Shift + v
 search=Ctrl + Shift + f
