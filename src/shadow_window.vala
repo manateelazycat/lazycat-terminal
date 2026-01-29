@@ -282,6 +282,13 @@ public class ShadowWindow : Gtk.ApplicationWindow {
         }
     }
 
+    private void on_window_state_changed() {
+        update_snap_position();
+        update_content_margins();
+        update_shadow_classes();
+        schedule_input_region_update();
+    }
+
     private void on_surface_state_changed() {
         update_snap_position();
         schedule_input_region_update();
@@ -390,13 +397,9 @@ public class ShadowWindow : Gtk.ApplicationWindow {
             }
         });
 
-        // Track maximize state
-        notify["maximized"].connect(() => {
-            update_snap_position();
-            update_content_margins();
-            update_shadow_classes();
-            schedule_input_region_update();
-        });
+        // Track maximize and fullscreen state changes
+        notify["maximized"].connect(on_window_state_changed);
+        notify["fullscreened"].connect(on_window_state_changed);
 
         // Track size changes with debounce
         notify["default-width"].connect(schedule_position_check);
@@ -458,6 +461,7 @@ public class ShadowWindow : Gtk.ApplicationWindow {
 
                 // First check ToplevelState
                 if ((Gdk.ToplevelState.MAXIMIZED in state) ||
+                    (Gdk.ToplevelState.FULLSCREEN in state) ||
                     (Gdk.ToplevelState.TILED in state)) {
                     new_position = WindowSnapPosition.MAXIMIZED;
                 }
