@@ -289,11 +289,10 @@ public class TerminalTab : Gtk.Box {
         // Regular expression to match URLs (http, https, ftp, file)
         string url_regex = "(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]*[-A-Za-z0-9+&@#/%=~_|]";
 
-        int regex_tag = -1;
         try {
             // Create regex for URL matching
             var regex = new Vte.Regex.for_match(url_regex, (ssize_t)url_regex.length, 0);
-            regex_tag = terminal.match_add_regex(regex, 0);
+            terminal.match_add_regex(regex, 0);
         } catch (Error e) {
             stderr.printf("Error setting up hyperlink regex: %s\n", e.message);
             return;
@@ -308,8 +307,7 @@ public class TerminalTab : Gtk.Box {
         var motion_controller = new Gtk.EventControllerMotion();
         motion_controller.motion.connect((x, y) => {
             // Check if mouse is over a URL using pixel coordinates
-            int tag;
-            string? url = terminal.check_match_at(x, y, out tag);
+            string? url = terminal.check_match_at(x, y, null);
 
             // Update cursor and underline based on hover state
             if (url != null && url != current_hover_url) {
@@ -346,8 +344,7 @@ public class TerminalTab : Gtk.Box {
 
                 if (ctrl) {
                     // Check if clicked on a URL using pixel coordinates
-                    int tag;
-                    string? url = terminal.check_match_at(x, y, out tag);
+                    string? url = terminal.check_match_at(x, y, null);
 
                     if (url != null) {
                         // Open URL in default browser
@@ -442,8 +439,7 @@ public class TerminalTab : Gtk.Box {
     }
 
     private bool has_foreground_process(Vte.Terminal terminal) {
-        int pid;
-        return try_get_foreground_pid(terminal, out pid);
+        return try_get_foreground_pid(terminal, null);
     }
 
     private void kill_foreground_process(Vte.Terminal terminal) {
@@ -653,8 +649,8 @@ public class TerminalTab : Gtk.Box {
     // Record command position when Enter is pressed
     private void record_command_position(Vte.Terminal terminal) {
         // Get current cursor position
-        long column, row;
-        terminal.get_cursor_position(out column, out row);
+        long row;
+        terminal.get_cursor_position(null, out row);
 
         // Get or create the positions array for this terminal
         var positions = command_positions.get(terminal);
@@ -1236,6 +1232,50 @@ public class TerminalTab : Gtk.Box {
         }
     }
 
+    // Get only Y coordinate and height of a widget
+    private void get_widget_y_position(Gtk.Widget widget, out int y, out int height) {
+        height = widget.get_height();
+        Graphene.Point src_point = Graphene.Point() { x = 0, y = 0 };
+        Graphene.Point dest_point;
+        if (widget.compute_point(this, src_point, out dest_point)) {
+            y = (int)dest_point.y;
+        } else {
+            y = 0;
+        }
+    }
+
+    // Get only Y coordinate of a widget
+    private int get_widget_y(Gtk.Widget widget) {
+        Graphene.Point src_point = Graphene.Point() { x = 0, y = 0 };
+        Graphene.Point dest_point;
+        if (widget.compute_point(this, src_point, out dest_point)) {
+            return (int)dest_point.y;
+        }
+        return 0;
+    }
+
+    // Get only X coordinate and width of a widget
+    private void get_widget_x_position(Gtk.Widget widget, out int x, out int width) {
+        width = widget.get_width();
+        Graphene.Point src_point = Graphene.Point() { x = 0, y = 0 };
+        Graphene.Point dest_point;
+        if (widget.compute_point(this, src_point, out dest_point)) {
+            x = (int)dest_point.x;
+        } else {
+            x = 0;
+        }
+    }
+
+    // Get only X coordinate of a widget
+    private int get_widget_x(Gtk.Widget widget) {
+        Graphene.Point src_point = Graphene.Point() { x = 0, y = 0 };
+        Graphene.Point dest_point;
+        if (widget.compute_point(this, src_point, out dest_point)) {
+            return (int)dest_point.x;
+        }
+        return 0;
+    }
+
     // Find terminals that intersect horizontally (for left/right selection)
     private List<Vte.Terminal> find_intersects_horizontal_terminals(int x, int y, int width, int height, bool left) {
         List<Vte.Terminal> intersects = null;
@@ -1331,8 +1371,7 @@ public class TerminalTab : Gtk.Box {
             var t_scrolled = terminal.get_parent();
             if (t_scrolled == null) continue;
 
-            int t_x, t_y, t_width, t_height;
-            get_widget_position(t_scrolled, out t_x, out t_y, out t_width, out t_height);
+            int t_y = get_widget_y(t_scrolled);
 
             if (t_y == y) {
                 focused_terminal = terminal;
@@ -1346,8 +1385,8 @@ public class TerminalTab : Gtk.Box {
             var t_scrolled = terminal.get_parent();
             if (t_scrolled == null) continue;
 
-            int t_x, t_y, t_width, t_height;
-            get_widget_position(t_scrolled, out t_x, out t_y, out t_width, out t_height);
+            int t_y, t_height;
+            get_widget_y_position(t_scrolled, out t_y, out t_height);
 
             if (t_y < y && t_y + t_height >= y + height) {
                 focused_terminal = terminal;
@@ -1364,8 +1403,8 @@ public class TerminalTab : Gtk.Box {
             var t_scrolled = terminal.get_parent();
             if (t_scrolled == null) continue;
 
-            int t_x, t_y, t_width, t_height;
-            get_widget_position(t_scrolled, out t_x, out t_y, out t_width, out t_height);
+            int t_y, t_height;
+            get_widget_y_position(t_scrolled, out t_y, out t_height);
 
             int area = height + t_height - (t_y - y).abs() - (t_y + t_height - y - height).abs();
             area = area / 2;
@@ -1405,8 +1444,7 @@ public class TerminalTab : Gtk.Box {
             var t_scrolled = terminal.get_parent();
             if (t_scrolled == null) continue;
 
-            int t_x, t_y, t_width, t_height;
-            get_widget_position(t_scrolled, out t_x, out t_y, out t_width, out t_height);
+            int t_x = get_widget_x(t_scrolled);
 
             if (t_x == x) {
                 focused_terminal = terminal;
@@ -1420,8 +1458,8 @@ public class TerminalTab : Gtk.Box {
             var t_scrolled = terminal.get_parent();
             if (t_scrolled == null) continue;
 
-            int t_x, t_y, t_width, t_height;
-            get_widget_position(t_scrolled, out t_x, out t_y, out t_width, out t_height);
+            int t_x, t_width;
+            get_widget_x_position(t_scrolled, out t_x, out t_width);
 
             if (t_x < x && t_x + t_width >= x + width) {
                 focused_terminal = terminal;
@@ -1438,8 +1476,8 @@ public class TerminalTab : Gtk.Box {
             var t_scrolled = terminal.get_parent();
             if (t_scrolled == null) continue;
 
-            int t_x, t_y, t_width, t_height;
-            get_widget_position(t_scrolled, out t_x, out t_y, out t_width, out t_height);
+            int t_x, t_width;
+            get_widget_x_position(t_scrolled, out t_x, out t_width);
 
             int area = width + t_width - (t_x - x).abs() - (t_x + t_width - x - width).abs();
             area = area / 2;

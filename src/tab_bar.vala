@@ -164,8 +164,8 @@ public class TabBar : Gtk.DrawingArea {
         var font_desc = Pango.FontDescription.from_string("Sans 11");
         layout.set_font_description(font_desc);
 
-        int text_width, text_height;
-        layout.get_pixel_size(out text_width, out text_height);
+        int text_width;
+        layout.get_pixel_size(out text_width, null);
 
         // Width = text width + 40px (20px padding on each side)
         int calculated_width = text_width + 40;
