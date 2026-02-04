@@ -158,10 +158,14 @@ public class TerminalWindow : ShadowWindow {
                 outline: none;
             }
             .transparent-scroll scrollbar slider {
-                background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0.65);
+                background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0);
                 border: none;
                 box-shadow: none;
                 outline: none;
+                transition: background-color 200ms ease-in-out;
+            }
+            .transparent-scroll scrollbar:hover slider {
+                background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0.65);
             }
             .transparent-scroll scrollbar slider:hover {
                 background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0.8);
