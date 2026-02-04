@@ -150,7 +150,23 @@ public class TerminalWindow : ShadowWindow {
             .transparent-tab {
                 background-color: transparent;
             }
-            scrollbar slider:active {
+            .transparent-scroll scrollbar,
+            .transparent-scroll scrollbar trough {
+                background-color: transparent;
+                border: none;
+                box-shadow: none;
+                outline: none;
+            }
+            .transparent-scroll scrollbar slider {
+                background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0.65);
+                border: none;
+                box-shadow: none;
+                outline: none;
+            }
+            .transparent-scroll scrollbar slider:hover {
+                background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0.8);
+            }
+            .transparent-scroll scrollbar slider:active {
                 background-color: rgba(""" + tr.to_string() + """, """ + tg.to_string() + """, """ + tb.to_string() + """, 0.9);
             }
         """;
