@@ -817,22 +817,46 @@ public class TerminalTab : Gtk.Box {
         }
     }
 
+    private string? get_process_working_directory(int pid) {
+        if (pid <= 0) {
+            return null;
+        }
+
+        try {
+            return FileUtils.read_link("/proc/%d/cwd".printf(pid));
+        } catch (Error e) {
+            stderr.printf("Parse cwd of %d failed: %s\n", pid, e.message);
+            return null;
+        }
+    }
+
     // Get current working directory from focused terminal
     public string? get_current_working_directory() {
         if (focused_terminal == null) {
             return null;
         }
 
+        // Prefer VTE-reported path (updated by shell via OSC 7)
+        string? cwd = get_terminal_working_directory(focused_terminal);
+        if (cwd != null) {
+            return cwd;
+        }
+
+        // Fallback to shell process cwd; this remains valid while foreground commands run
+        int? child_pid = terminal_pids.get(focused_terminal);
+        if (child_pid != null) {
+            cwd = get_process_working_directory(child_pid);
+            if (cwd != null) {
+                return cwd;
+            }
+        }
+
         if (focused_terminal.get_pty() != null) {
             int pty_fd = focused_terminal.get_pty().fd;
             int fpid = Posix.tcgetpgrp(pty_fd);
-            if (fpid > 0) {
-                try {
-                    string cwd = FileUtils.read_link("/proc/%d/cwd".printf(fpid));
-                    return cwd;
-                } catch (Error e) {
-                    stderr.printf("Parse cwd of %d failed: %s\n", fpid, e.message);
-                }
+            cwd = get_process_working_directory(fpid);
+            if (cwd != null) {
+                return cwd;
             }
         }
 
