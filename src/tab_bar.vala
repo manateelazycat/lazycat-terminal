@@ -877,6 +877,34 @@ public class TabBar : Gtk.DrawingArea {
         }
     }
 
+    public void move_tab_to_end(int index) {
+        if (index < 0 || index >= tab_infos.length()) {
+            return;
+        }
+
+        int last_index = (int)tab_infos.length() - 1;
+        if (index == last_index) {
+            return;
+        }
+
+        bool moved_active_tab = (active_index == index);
+        var info = tab_infos.nth_data((uint)index);
+        tab_infos.remove(info);
+        tab_infos.append(info);
+
+        if (moved_active_tab) {
+            active_index = last_index;
+        } else if (active_index > index) {
+            active_index--;
+        }
+
+        if (scrolling_enabled && active_index >= 0) {
+            scroll_to_tab(active_index);
+        }
+
+        queue_draw();
+    }
+
     public void set_active_tab(int index) {
         if (index >= 0 && index < tab_infos.length()) {
             active_index = index;

@@ -41,6 +41,7 @@ yay -S lazycat-terminal
 | `Ctrl+Shift+W` | 关闭当前标签页 |
 | `Ctrl+Tab` | 切换到下一个标签页 |
 | `Ctrl+Shift+Tab` | 切换到上一个标签页 |
+| `Ctrl+Shift+End` | 将当前标签移到最后 |
 
 #### 分屏操作
 
@@ -140,6 +141,7 @@ lazycat-terminal [选项]
 - `close_workspace` - 关闭当前标签页（默认：`Ctrl + Shift + w`）
 - `next_workspace` - 切换到下一个标签页（默认：`Ctrl + Tab`）
 - `previous_workspace` - 切换到上一个标签页（默认：`Ctrl + Shift + Tab`）
+- `move_workspace_to_end` - 将当前标签移到最后（默认：`Ctrl + Shift + End`）
 
 **分屏操作：**
 - `vertical_split` - 垂直分屏（左右分割）（默认：`Ctrl + Shift + j`）

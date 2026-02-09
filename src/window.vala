@@ -490,6 +490,13 @@ public class TerminalWindow : ShadowWindow {
                 return true;
             }
 
+            // Move current workspace to end
+            string? move_workspace_to_end_shortcut = config.get_shortcut("move_workspace_to_end");
+            if (move_workspace_to_end_shortcut != null && key_name == move_workspace_to_end_shortcut) {
+                move_active_tab_to_end();
+                return true;
+            }
+
             // Vertical split
             string? vertical_split_shortcut = config.get_shortcut("vertical_split");
             if (vertical_split_shortcut != null && key_name == vertical_split_shortcut) {
@@ -666,6 +673,28 @@ public class TerminalWindow : ShadowWindow {
         int next = (current + direction + count) % count;
         tab_bar.set_active_tab(next);
         on_tab_selected(next);
+    }
+
+    private void move_active_tab_to_end() {
+        int current = tab_bar.get_active_index();
+        int count = (int)tabs.length();
+
+        if (count <= 1 || current < 0 || current >= count || current == count - 1) {
+            return;
+        }
+
+        var tab = tabs.nth_data((uint)current);
+        if (tab == null) {
+            return;
+        }
+
+        tabs.remove(tab);
+        tabs.append(tab);
+        tab_bar.move_tab_to_end(current);
+
+        int last = count - 1;
+        tab_bar.set_active_tab(last);
+        on_tab_selected(last);
     }
 
     public void add_new_tab() {
