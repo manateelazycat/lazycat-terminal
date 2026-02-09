@@ -877,25 +877,23 @@ public class TabBar : Gtk.DrawingArea {
         }
     }
 
-    public void move_tab_to_end(int index) {
-        if (index < 0 || index >= tab_infos.length()) {
+    public void move_tab(int from_index, int to_index) {
+        int count = (int)tab_infos.length();
+        if (from_index < 0 || from_index >= count || to_index < 0 || to_index >= count || from_index == to_index) {
             return;
         }
 
-        int last_index = (int)tab_infos.length() - 1;
-        if (index == last_index) {
-            return;
-        }
-
-        bool moved_active_tab = (active_index == index);
-        var info = tab_infos.nth_data((uint)index);
+        bool moved_active_tab = (active_index == from_index);
+        var info = tab_infos.nth_data((uint)from_index);
         tab_infos.remove(info);
-        tab_infos.append(info);
+        tab_infos.insert(info, to_index);
 
         if (moved_active_tab) {
-            active_index = last_index;
-        } else if (active_index > index) {
+            active_index = to_index;
+        } else if (from_index < active_index && active_index <= to_index) {
             active_index--;
+        } else if (to_index <= active_index && active_index < from_index) {
+            active_index++;
         }
 
         if (scrolling_enabled && active_index >= 0) {
@@ -903,6 +901,10 @@ public class TabBar : Gtk.DrawingArea {
         }
 
         queue_draw();
+    }
+
+    public void move_tab_to_end(int index) {
+        move_tab(index, (int)tab_infos.length() - 1);
     }
 
     public void set_active_tab(int index) {

@@ -490,6 +490,27 @@ public class TerminalWindow : ShadowWindow {
                 return true;
             }
 
+            // Move current workspace to first
+            string? move_workspace_to_first_shortcut = config.get_shortcut("move_workspace_to_first");
+            if (move_workspace_to_first_shortcut != null && key_name == move_workspace_to_first_shortcut) {
+                move_active_tab_to_first();
+                return true;
+            }
+
+            // Move current workspace left
+            string? move_workspace_left_shortcut = config.get_shortcut("move_workspace_left");
+            if (move_workspace_left_shortcut != null && key_name == move_workspace_left_shortcut) {
+                move_active_tab_left();
+                return true;
+            }
+
+            // Move current workspace right
+            string? move_workspace_right_shortcut = config.get_shortcut("move_workspace_right");
+            if (move_workspace_right_shortcut != null && key_name == move_workspace_right_shortcut) {
+                move_active_tab_right();
+                return true;
+            }
+
             // Move current workspace to end
             string? move_workspace_to_end_shortcut = config.get_shortcut("move_workspace_to_end");
             if (move_workspace_to_end_shortcut != null && key_name == move_workspace_to_end_shortcut) {
@@ -675,11 +696,16 @@ public class TerminalWindow : ShadowWindow {
         on_tab_selected(next);
     }
 
-    private void move_active_tab_to_end() {
+    private void move_active_tab_to_index(int target) {
         int current = tab_bar.get_active_index();
         int count = (int)tabs.length();
 
-        if (count <= 1 || current < 0 || current >= count || current == count - 1) {
+        if (count <= 1 || current < 0 || current >= count) {
+            return;
+        }
+
+        int target_index = int.max(0, int.min(target, count - 1));
+        if (current == target_index) {
             return;
         }
 
@@ -689,12 +715,29 @@ public class TerminalWindow : ShadowWindow {
         }
 
         tabs.remove(tab);
-        tabs.append(tab);
-        tab_bar.move_tab_to_end(current);
+        tabs.insert(tab, target_index);
+        tab_bar.move_tab(current, target_index);
 
-        int last = count - 1;
-        tab_bar.set_active_tab(last);
-        on_tab_selected(last);
+        tab_bar.set_active_tab(target_index);
+        on_tab_selected(target_index);
+    }
+
+    private void move_active_tab_to_first() {
+        move_active_tab_to_index(0);
+    }
+
+    private void move_active_tab_left() {
+        int current = tab_bar.get_active_index();
+        move_active_tab_to_index(current - 1);
+    }
+
+    private void move_active_tab_right() {
+        int current = tab_bar.get_active_index();
+        move_active_tab_to_index(current + 1);
+    }
+
+    private void move_active_tab_to_end() {
+        move_active_tab_to_index((int)tabs.length() - 1);
     }
 
     public void add_new_tab() {
