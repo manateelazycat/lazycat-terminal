@@ -99,6 +99,7 @@ yay -S lazycat-terminal
 | `F11` | 切换全屏模式 |
 | `Ctrl+滚轮` | 调节窗口透明度 |
 | `Ctrl+Shift+E` | 打开设置对话框 |
+| `Ctrl+Shift+B` | 随机切换背景图片（目录模式） |
 | `Ctrl+点击链接` | 在浏览器中打开 URL |
 
 ### 鼠标操作
@@ -190,6 +191,7 @@ lazycat-terminal [选项]
 
 **其他：**
 - `fullscreen` - 切换全屏模式（默认：`F11`）
+- `switch_background` - 随机切换背景图片（默认：`Ctrl + Shift + b`），仅在背景图片为目录模式时生效
 
 **配置示例：**
 
@@ -215,6 +217,7 @@ switch_to_workspace_2=Alt + 2
 # ...
 switch_to_last_workspace=Alt + 0
 # ... 其他快捷键 ...
+switch_background=Ctrl + Shift + b
 ```
 
 **背景图片配置示例：**
@@ -225,6 +228,7 @@ background_image=~/Pictures/wallpaper.jpg
 
 # 随机背景（每次启动从目录中随机选取一张）
 background_image=~/Pictures/terminal-backgrounds/
+# 使用 Ctrl+Shift+B 可以在运行时随机切换到目录中的另一张图片
 ```
 
 ### 源码开发
