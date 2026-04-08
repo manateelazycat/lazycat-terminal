@@ -459,10 +459,13 @@ public class ShadowWindow : Gtk.ApplicationWindow {
             if (toplevel != null) {
                 var state = toplevel.get_state();
 
-                // First check ToplevelState
                 if ((Gdk.ToplevelState.MAXIMIZED in state) ||
                     (Gdk.ToplevelState.FULLSCREEN in state) ||
-                    (Gdk.ToplevelState.TILED in state)) {
+                    (Gdk.ToplevelState.TILED in state) ||
+                    (Gdk.ToplevelState.TOP_TILED in state) ||
+                    (Gdk.ToplevelState.RIGHT_TILED in state) ||
+                    (Gdk.ToplevelState.BOTTOM_TILED in state) ||
+                    (Gdk.ToplevelState.LEFT_TILED in state)) {
                     new_position = WindowSnapPosition.MAXIMIZED;
                 }
             }
@@ -473,22 +476,21 @@ public class ShadowWindow : Gtk.ApplicationWindow {
             int win_w = get_width();
             int win_h = get_height();
 
-            // Tolerance for size comparison
-            int tolerance = SHADOW_SIZE * 2 + 20;
+            // KWin on X11 may not expose tiled state. Match the outer window
+            // geometry used by quick-tiling so we can disable external shadows.
+            int width_tolerance = SHADOW_SIZE * 2 + 32;
+            int height_tolerance = SHADOW_SIZE * 2 + 64;
 
-            bool is_full_width = (win_w >= monitor_width - tolerance);
-            bool is_half_width = (win_w >= monitor_width / 2 - tolerance) && (win_w <= monitor_width / 2 + tolerance);
-            bool is_full_height = (win_h >= monitor_height - tolerance);
-            bool is_half_height = (win_h >= monitor_height / 2 - tolerance) && (win_h <= monitor_height / 2 + tolerance);
+            bool is_full_width = win_w >= monitor_width - width_tolerance;
+            bool is_half_width = (win_w >= monitor_width / 2 - width_tolerance) &&
+                                 (win_w <= monitor_width / 2 + width_tolerance);
+            bool is_full_height = win_h >= monitor_height - height_tolerance;
+            bool is_half_height = (win_h >= monitor_height / 2 - height_tolerance) &&
+                                  (win_h <= monitor_height / 2 + height_tolerance);
 
-            if (is_full_width && is_full_height) {
-                // Maximized
-                new_position = WindowSnapPosition.MAXIMIZED;
-            } else if (is_half_width && is_full_height) {
-                // Left or right half snap
+            if ((is_full_width || is_half_width) && is_full_height) {
                 new_position = WindowSnapPosition.MAXIMIZED;
             } else if (is_half_width && is_half_height) {
-                // Corner snap
                 new_position = WindowSnapPosition.MAXIMIZED;
             }
         }

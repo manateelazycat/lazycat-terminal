@@ -1368,23 +1368,22 @@ public class TerminalWindow : ShadowWindow {
         int mon_width = geometry.width;
         int mon_height = geometry.height;
 
-        // Compensate for shadow margins in calculations
-        int content_width = win_width - shadow_size * 2;
-        int content_height = win_height - shadow_size * 2;
-
-        // Tolerance for snap detection (pixels)
-        int tolerance = 60;
+        // Use the outer window size here. KDE quick-tile on X11 may not set a
+        // GTK tiled state, but the window geometry still jumps to half-screen.
+        int width_tolerance = shadow_size * 2 + 32;
+        int height_tolerance = shadow_size * 2 + 64;
 
         // Check for half-screen width (left or right snap)
-        bool is_half_width = (content_width >= mon_width / 2 - tolerance) &&
-                             (content_width <= mon_width / 2 + tolerance);
+        bool is_half_width = (win_width >= mon_width / 2 - width_tolerance) &&
+                             (win_width <= mon_width / 2 + width_tolerance);
+        bool is_full_width = win_width >= mon_width - width_tolerance;
 
         // Check for full height (top/bottom snap)
-        bool is_full_height = content_height >= mon_height - tolerance;
+        bool is_full_height = win_height >= mon_height - height_tolerance;
 
         // Check for half height (corner snap)
-        bool is_half_height = (content_height >= mon_height / 2 - tolerance) &&
-                              (content_height <= mon_height / 2 + tolerance);
+        bool is_half_height = (win_height >= mon_height / 2 - height_tolerance) &&
+                              (win_height <= mon_height / 2 + height_tolerance);
 
         // Determine snap position based on window geometry
         // Since GTK4 doesn't directly expose window position, we need to use
@@ -1393,12 +1392,10 @@ public class TerminalWindow : ShadowWindow {
         WindowSnapPosition new_position = WindowSnapPosition.NONE;
         bool is_snapped = false;
 
-        if (is_half_width && is_full_height) {
-            // Left or right half snap
+        if ((is_full_width || is_half_width) && is_full_height) {
             is_snapped = true;
             new_position = WindowSnapPosition.MAXIMIZED;
         } else if (is_half_width && is_half_height) {
-            // Corner snap
             is_snapped = true;
             new_position = WindowSnapPosition.MAXIMIZED;
         }
