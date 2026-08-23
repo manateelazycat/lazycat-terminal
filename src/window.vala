@@ -16,6 +16,8 @@ public class TerminalWindow : ShadowWindow {
     private ContextMenuOverlay? context_menu = null;
     private ConfigManager config;
     private Gtk.Picture? background_picture = null;
+    private string? current_background_path = null;
+    private File? background_dir = null;
 
     public TerminalWindow(Gtk.Application app) {
         Object(application: app);
@@ -619,6 +621,13 @@ public class TerminalWindow : ShadowWindow {
                     var tab = tabs.nth_data((uint)tab_bar.get_active_index());
                     if (tab != null) tab.close_other_terminals();
                 }
+                return true;
+            }
+
+            // Switch background image
+            string? switch_bg_shortcut = config.get_shortcut("switch_background");
+            if (switch_bg_shortcut != null && key_name == switch_bg_shortcut) {
+                switch_background_image();
                 return true;
             }
 
@@ -1655,7 +1664,8 @@ public class TerminalWindow : ShadowWindow {
         try {
             var info = file.query_info(FileAttribute.STANDARD_TYPE, FileQueryInfoFlags.NONE);
             if (info.get_file_type() == FileType.DIRECTORY) {
-                file = pick_random_image(file);
+                background_dir = file;
+                file = pick_random_image(file, null);
                 if (file == null) {
                     stderr.printf("No images found in directory: %s\n", image_path);
                     return;
@@ -1666,6 +1676,7 @@ public class TerminalWindow : ShadowWindow {
             return;
         }
 
+        current_background_path = file.get_path();
         background_picture = new Gtk.Picture.for_file(file);
         background_picture.set_content_fit(Gtk.ContentFit.COVER);
         background_picture.set_can_shrink(true);
@@ -1673,7 +1684,7 @@ public class TerminalWindow : ShadowWindow {
         background_picture.set_vexpand(true);
     }
 
-    private File? pick_random_image(File dir) {
+    private File? pick_random_image(File dir, string? exclude_path) {
         var images = new GenericArray<File>();
         try {
             var enumerator = dir.enumerate_children(
@@ -1689,7 +1700,10 @@ public class TerminalWindow : ShadowWindow {
                 if (name.has_suffix(".jpg") || name.has_suffix(".jpeg") ||
                     name.has_suffix(".png") || name.has_suffix(".webp") ||
                     name.has_suffix(".bmp")) {
-                    images.add(dir.get_child(child_info.get_name()));
+                    var child = dir.get_child(child_info.get_name());
+                    if (exclude_path == null || child.get_path() != exclude_path) {
+                        images.add(child);
+                    }
                 }
             }
         } catch (Error e) {
@@ -1703,5 +1717,17 @@ public class TerminalWindow : ShadowWindow {
 
         int index = Random.int_range(0, (int32)images.length);
         return images[index];
+    }
+
+    private void switch_background_image() {
+        if (background_dir == null || background_picture == null) {
+            return;
+        }
+
+        var new_image = pick_random_image(background_dir, current_background_path);
+        if (new_image != null) {
+            current_background_path = new_image.get_path();
+            background_picture.set_file(new_image);
+        }
     }
 }

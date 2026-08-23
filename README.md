@@ -99,6 +99,7 @@ Note: `Return` refers to the Enter key on the main keyboard; `Enter` refers to t
 | `F11` | Toggle fullscreen mode |
 | `Ctrl+Scroll` | Adjust window transparency |
 | `Ctrl+Shift+E` | Open settings dialog |
+| `Ctrl+Shift+B` | Randomly switch background image (directory mode) |
 | `Ctrl+Click link` | Open URL in browser |
 
 ### Mouse Operations
@@ -190,6 +191,7 @@ Available modifiers: `Ctrl`, `Shift`, `Alt`, `Super`
 
 **Other:**
 - `fullscreen` - Toggle fullscreen mode (default: `F11`)
+- `switch_background` - Randomly switch background image (default: `Ctrl + Shift + b`), only works when background image is set to a directory
 
 **Example Configuration:**
 
@@ -215,6 +217,7 @@ switch_to_workspace_2=Alt + 2
 # ...
 switch_to_last_workspace=Alt + 0
 # ... other shortcuts ...
+switch_background=Ctrl + Shift + b
 ```
 
 **Background Image Examples:**
@@ -225,6 +228,7 @@ background_image=~/Pictures/wallpaper.jpg
 
 # Random image from directory (picks one on each launch)
 background_image=~/Pictures/terminal-backgrounds/
+# Press Ctrl+Shift+B to randomly switch to another image from the directory at runtime
 ```
 
 ### Development
