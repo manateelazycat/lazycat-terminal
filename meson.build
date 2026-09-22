@@ -42,6 +42,7 @@ vala_sources = files(
   'src/config_manager.vala',
   'src/keymap.vala',
   'src/style_helper.vala',
+  'src/desktop_environment.vala',
 )
 
 executable('lazycat-terminal',
@@ -52,6 +53,17 @@ executable('lazycat-terminal',
   dependencies: vala_deps,
   install: true,
 )
+
+desktop_environment_test = executable(
+  'desktop-environment-test',
+  files(
+    'tests/desktop_environment_test.vala',
+    'src/desktop_environment.vala',
+  ),
+  dependencies: glib_dep,
+)
+
+test('desktop-environment', desktop_environment_test)
 
 # Install .desktop file
 conf_data = configuration_data()

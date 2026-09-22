@@ -10,6 +10,7 @@ public class TabBar : Gtk.DrawingArea {
     private bool pressed_new_tab = false;
     private bool hover_settings_btn = false;
     private bool pressed_settings_btn = false;
+    private bool window_controls_visible = true;
     private double background_opacity = 0.93;  // Default opacity for tab bar
 
     // Tab close button state
@@ -45,8 +46,8 @@ public class TabBar : Gtk.DrawingArea {
     private const int NEW_TAB_BTN_SIZE = 36;  // 36px button size
     private const int NEW_TAB_BTN_MARGIN_LEFT = 20;  // 20px left margin
     private const int CORNER_RADIUS = 10;
-    // Reserved space for right side: new_tab_btn + gap + settings_btn + gap + window_controls
-    private const int RIGHT_RESERVED_WIDTH = NEW_TAB_BTN_SIZE + 10 + NEW_TAB_BTN_SIZE + 10 + (int)CTRL_BTN_AREA_WIDTH;  // 177
+    // Reserved space for the new-tab and settings buttons, including their gaps.
+    private const int BASE_RIGHT_RESERVED_WIDTH = NEW_TAB_BTN_SIZE + 10 + NEW_TAB_BTN_SIZE + 10;  // 92
 
     // Scrolling constants
     private const int SCROLL_BTN_WIDTH = 24;
@@ -81,6 +82,7 @@ public class TabBar : Gtk.DrawingArea {
 
     construct {
         tab_infos = new List<TabInfo>();
+        window_controls_visible = !DesktopEnvironment.is_hyprland_or_omarchy();
 
         // Initialize default background color (black)
         background_color = Gdk.RGBA();
@@ -132,7 +134,7 @@ public class TabBar : Gtk.DrawingArea {
         if (scrolling_enabled) {
             cr.save();
             int clip_x = TAB_PADDING;
-            int clip_width = width - clip_x - RIGHT_RESERVED_WIDTH;
+            int clip_width = width - clip_x - get_right_reserved_width();
             cr.rectangle(clip_x, 0, clip_width, height);
             cr.clip();
         }
@@ -160,8 +162,10 @@ public class TabBar : Gtk.DrawingArea {
         // Draw settings button
         draw_settings_button(cr, width, height);
 
-        // Draw window controls (minimize, maximize, close)
-        draw_window_controls(cr, width, height);
+        // Hyprland/Omarchy provide their own window-management workflow.
+        if (window_controls_visible) {
+            draw_window_controls(cr, width, height);
+        }
     }
 
     private int calculate_tab_width_for_text(string text) {
@@ -191,7 +195,7 @@ public class TabBar : Gtk.DrawingArea {
         }
 
         // Reserve space for new tab button, settings button, and window controls
-        int reserved = RIGHT_RESERVED_WIDTH;
+        int reserved = get_right_reserved_width();
         int usable_width = available_width - reserved - TAB_PADDING;
 
         // Calculate total width needed using each tab's individual width
@@ -379,7 +383,7 @@ public class TabBar : Gtk.DrawingArea {
 
     private void draw_settings_button(Cairo.Context cr, int width, int height) {
         // Position in top-right corner, before window controls
-        double margin_right = CTRL_BTN_AREA_WIDTH + 10;
+        double margin_right = (window_controls_visible ? CTRL_BTN_AREA_WIDTH : 0) + 10;
         double btn_x = width - margin_right - NEW_TAB_BTN_SIZE;
         double btn_y = (height - NEW_TAB_BTN_SIZE) / 2;
         double center_x = btn_x + NEW_TAB_BTN_SIZE / 2;
@@ -506,21 +510,48 @@ public class TabBar : Gtk.DrawingArea {
         // In scrolling mode, position is fixed relative to right side
         if (scrolling_enabled) {
             int width = get_width();
-            return width - RIGHT_RESERVED_WIDTH;
+            return width - get_right_reserved_width();
         }
 
         var last = tab_infos.nth_data((uint)(tab_infos.length() - 1));
         double natural_x = last.x + last.width - TAB_OVERLAP + 8 + NEW_TAB_BTN_MARGIN_LEFT;
         // Cap position to not overlap with settings button
-        double max_x = get_width() - RIGHT_RESERVED_WIDTH;
+        double max_x = get_width() - get_right_reserved_width();
         return double.min(natural_x, max_x);
+    }
+
+    private int get_right_reserved_width() {
+        return BASE_RIGHT_RESERVED_WIDTH +
+               (window_controls_visible ? (int)CTRL_BTN_AREA_WIDTH : 0);
     }
 
     private double get_settings_button_x() {
         // Position in top-right corner, before window controls
         int width = get_width();
-        double margin_right = CTRL_BTN_AREA_WIDTH + 10;
+        double margin_right = (window_controls_visible ? CTRL_BTN_AREA_WIDTH : 0) + 10;
         return width - margin_right - NEW_TAB_BTN_SIZE;
+    }
+
+    private int get_window_control_at(double x, double y) {
+        if (!window_controls_visible) {
+            return -1;
+        }
+
+        int width = get_width();
+        double btn_size = CTRL_BTN_SIZE;
+        double spacing = CTRL_BTN_SPACING;
+        double start_x = width - CTRL_BTN_AREA_WIDTH;
+        double hit_radius = btn_size / 2 + 3;
+
+        for (int i = 0; i < 3; i++) {
+            double btn_x = start_x + i * (btn_size + spacing);
+            if (Math.fabs(x - btn_x) <= hit_radius &&
+                Math.fabs(y - get_height() / 2) <= hit_radius) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private void on_motion(double x, double y) {
@@ -536,20 +567,8 @@ public class TabBar : Gtk.DrawingArea {
         hover_settings_btn = false;
         hover_close_index = -1;
 
-        // Check window control buttons first
-        int width = get_width();
-        double btn_size = CTRL_BTN_SIZE;
-        double spacing = CTRL_BTN_SPACING;
-        double start_x = width - CTRL_BTN_AREA_WIDTH;
-        double hit_radius = btn_size / 2 + 3;
-
-        for (int i = 0; i < 3; i++) {
-            double btn_x = start_x + i * (btn_size + spacing);
-            if (Math.fabs(x - btn_x) <= hit_radius && Math.fabs(y - get_height() / 2) <= hit_radius) {
-                hover_control = i;
-                break;
-            }
-        }
+        // Check window control buttons first.
+        hover_control = get_window_control_at(x, y);
 
         // Check new tab button (only if not hovering control buttons)
         if (hover_control < 0) {
@@ -621,19 +640,11 @@ public class TabBar : Gtk.DrawingArea {
 
     private void on_press(int n_press, double x, double y) {
         // Check window control buttons - set pressed state
-        int width = get_width();
-        double btn_size = CTRL_BTN_SIZE;
-        double spacing = CTRL_BTN_SPACING;
-        double start_x = width - CTRL_BTN_AREA_WIDTH;
-        double hit_radius = btn_size / 2 + 3;
-
-        for (int i = 0; i < 3; i++) {
-            double btn_x = start_x + i * (btn_size + spacing);
-            if (Math.fabs(x - btn_x) <= hit_radius && Math.fabs(y - get_height() / 2) <= hit_radius) {
-                pressed_control = i;
-                queue_draw();
-                return;
-            }
+        int control = get_window_control_at(x, y);
+        if (control >= 0) {
+            pressed_control = control;
+            queue_draw();
+            return;
         }
 
         // Check tab close buttons - set pressed state
@@ -720,36 +731,28 @@ public class TabBar : Gtk.DrawingArea {
         pressed_close_index = -1;
 
         // Check window controls - execute action if released on same button
-        int width = get_width();
-        double btn_size = CTRL_BTN_SIZE;
-        double spacing = CTRL_BTN_SPACING;
-        double start_x = width - CTRL_BTN_AREA_WIDTH;
-        double hit_radius = btn_size / 2 + 3;
-
-        for (int i = 0; i < 3; i++) {
-            double ctrl_x = start_x + i * (btn_size + spacing);
-            if (Math.fabs(x - ctrl_x) <= hit_radius && Math.fabs(y - get_height() / 2) <= hit_radius) {
-                // Only trigger if released on the same button that was pressed
-                if (pressed_control == i) {
-                    var window = get_root() as Gtk.Window;
-                    if (window != null) {
-                        if (i == 0) {
-                            window.minimize();
-                        } else if (i == 1) {
-                            if (window.is_maximized()) {
-                                window.unmaximize();
-                            } else {
-                                window.maximize();
-                            }
+        int released_control = get_window_control_at(x, y);
+        if (released_control >= 0) {
+            // Only trigger if released on the same button that was pressed
+            if (pressed_control == released_control) {
+                var window = get_root() as Gtk.Window;
+                if (window != null) {
+                    if (released_control == 0) {
+                        window.minimize();
+                    } else if (released_control == 1) {
+                        if (window.is_maximized()) {
+                            window.unmaximize();
                         } else {
-                            window.close();
+                            window.maximize();
                         }
+                    } else {
+                        window.close();
                     }
                 }
-                pressed_control = -1;
-                queue_draw();
-                return;
             }
+            pressed_control = -1;
+            queue_draw();
+            return;
         }
 
         pressed_control = -1;
@@ -819,7 +822,7 @@ public class TabBar : Gtk.DrawingArea {
 
         // Define visible area boundaries
         int visible_start = TAB_PADDING;
-        int visible_end = width - RIGHT_RESERVED_WIDTH;
+        int visible_end = width - get_right_reserved_width();
 
         // Tab's current screen position (info.x already includes scroll offset)
         int tab_left = info.x;
@@ -873,7 +876,7 @@ public class TabBar : Gtk.DrawingArea {
 
     // Check if position is over window control buttons (minimize/maximize/close)
     public bool is_over_window_controls(int x, int y) {
-        return x >= get_width() - 90;
+        return window_controls_visible && x >= get_width() - 90;
     }
 
     // Get tab index at position, returns -1 if not over any tab
