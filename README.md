@@ -29,9 +29,11 @@ All keyboard shortcuts can be customized in `~/.config/lazycat-terminal/config.c
 | Shortcut | Function |
 |--------|------|
 | `Ctrl+Shift+C` | Copy selected text |
-| `Ctrl+Shift+V` | Paste clipboard content |
+| `Ctrl+Shift+V` | Paste text, or save a clipboard image as PNG and paste its path |
 | `Ctrl+Shift+A` | Select all terminal content |
 | `Ctrl+Alt+C` | Copy last command output |
+
+Clipboard images are saved in private directories at `/tmp/lazycat-terminal-clipboard-XXXXXX/clipboard.png`. The image path is pasted into the current pane for local Codex / Claude Code sessions; right-click **Paste** works too. Files remain available after the terminal closes and are left to system temporary-file cleanup. Remote SSH sessions cannot access these local paths.
 
 #### Tab Management
 

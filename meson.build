@@ -1,5 +1,5 @@
 project('lazycat-terminal', 'vala', 'c',
-  version: '0.1.0',
+  version: '1.1.12',
   meson_version: '>= 0.50.0',
 )
 
@@ -36,6 +36,7 @@ vala_sources = files(
   'src/window.vala',
   'src/tab_bar.vala',
   'src/terminal_tab.vala',
+  'src/clipboard_image.vala',
   'src/context_menu.vala',
   'src/confirm_dialog.vala',
   'src/settings_dialog.vala',
@@ -64,6 +65,14 @@ desktop_environment_test = executable(
 )
 
 test('desktop-environment', desktop_environment_test)
+
+clipboard_image_test = executable(
+  'clipboard-image-test',
+  files('tests/clipboard_image_test.vala', 'src/clipboard_image.vala'),
+  dependencies: dependency('gtk4'),
+)
+
+test('clipboard-image', clipboard_image_test)
 
 # Install .desktop file
 conf_data = configuration_data()

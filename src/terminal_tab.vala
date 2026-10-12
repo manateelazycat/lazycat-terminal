@@ -952,8 +952,30 @@ public class TerminalTab : Gtk.Box {
     }
 
     public void paste_clipboard() {
-        if (focused_terminal != null) {
-            focused_terminal.paste_clipboard();
+        if (focused_terminal == null) {
+            return;
+        }
+        // Capture the destination before the asynchronous clipboard read.
+        paste_clipboard_into.begin(focused_terminal);
+    }
+
+    private async void paste_clipboard_into(Vte.Terminal terminal) {
+        try {
+            string? path = yield ClipboardImage.read_path(terminal.get_clipboard());
+            if (terminal_list.find(terminal) == null) {
+                return;
+            }
+            if (path != null) {
+                // VTE handles bracketed paste; never feed image bytes to the PTY.
+                terminal.paste_text(Shell.quote(path));
+            } else {
+                terminal.paste_clipboard();
+            }
+        } catch (Error e) {
+            warning("Could not paste clipboard image: %s", e.message);
+            if (terminal_list.find(terminal) != null) {
+                terminal.error_bell();
+            }
         }
     }
 

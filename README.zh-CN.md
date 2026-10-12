@@ -29,9 +29,11 @@ yay -S lazycat-terminal
 | 快捷键 | 功能 |
 |--------|------|
 | `Ctrl+Shift+C` | 复制选中文本 |
-| `Ctrl+Shift+V` | 粘贴剪贴板内容 |
+| `Ctrl+Shift+V` | 粘贴文本，或将剪贴板图片保存为 PNG 并粘贴路径 |
 | `Ctrl+Shift+A` | 全选终端内容 |
 | `Ctrl+Alt+C` | 复制最后一条命令的输出 |
+
+剪贴板图片保存到私有临时目录 `/tmp/lazycat-terminal-clipboard-XXXXXX/clipboard.png`，并将路径粘贴到当前窗格，供本机 Codex / Claude Code 读取；右键「粘贴」同样支持。图片在终端关闭后仍保留，由系统临时文件清理机制处理。SSH 远程会话无法访问这些本机路径。
 
 #### 标签页管理
 
